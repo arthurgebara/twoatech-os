@@ -5,13 +5,16 @@ import {
   ArrowLeft,
   CalendarClock,
   ClipboardList,
+  FileText,
   Laptop,
   Package,
+  Plus,
   Phone,
   StickyNote,
   UserRound,
 } from "lucide-react";
 import type { Metadata } from "next";
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -27,6 +30,7 @@ import { formatServiceOrderNumber } from "@/components/service-orders/service-or
 import { ServiceOrderObservationForm } from "@/components/service-orders/service-order-observation-form";
 import { ServiceOrderTimeline } from "@/components/service-orders/service-order-timeline";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -36,9 +40,13 @@ import {
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/session";
 import { formatBrazilianDateTime } from "@/lib/dates";
+import { formatBrazilianCurrency } from "@/lib/currency";
+import { cn } from "@/lib/utils";
+import { quoteStatusLabels } from "@/schemas/quote.schema";
 import { serviceOrderStatusLabels } from "@/schemas/service-order.schema";
 import { diagnosticService } from "@/services/diagnostic.service";
 import { entryChecklistService } from "@/services/entry-checklist.service";
+import { quoteService } from "@/services/quote.service";
 import { serviceOrderService } from "@/services/service-order.service";
 
 export const metadata: Metadata = {
@@ -80,9 +88,10 @@ export default async function ServiceOrderDetailPage({
     notFound();
   }
 
-  const [entryChecklist, diagnostic] = await Promise.all([
+  const [entryChecklist, diagnostic, quotes] = await Promise.all([
     entryChecklistService.getForServiceOrder(order.id),
     diagnosticService.getForServiceOrder(order.id),
+    quoteService.listForServiceOrder(order.id),
   ]);
 
   return (
@@ -255,6 +264,45 @@ export default async function ServiceOrderDetailPage({
           </CardContent>
         </Card>
       </section>
+
+      <Card className="shadow-xs">
+        <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Orçamentos</CardTitle>
+            <CardDescription>Versões e situação comercial desta ordem.</CardDescription>
+          </div>
+          {!["DELIVERED", "CANCELED"].includes(order.status) ? (
+            <Link
+              href={`/ordens-de-servico/${order.id}/orcamentos/novo` as Route}
+              className={cn(buttonVariants({ size: "sm" }))}
+            >
+              <Plus aria-hidden="true" /> Novo orçamento
+            </Link>
+          ) : null}
+        </CardHeader>
+        <CardContent className="px-0">
+          {quotes.length === 0 ? (
+            <div className="flex min-h-36 flex-col items-center justify-center text-center">
+              <FileText className="mb-2 size-6 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm font-medium">Nenhum orçamento criado</p>
+              <p className="text-xs text-muted-foreground">O diagnóstico pode seguir sem orçamento até esta etapa.</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {quotes.map((quote) => (
+                <Link key={quote.id} href={`/orcamentos/${quote.id}` as Route} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                  <div>
+                    <p className="text-sm font-medium">Orçamento #{quote.number} · versão {quote.version}</p>
+                    <p className="text-xs text-muted-foreground">{formatBrazilianDateTime(quote.createdAt)}</p>
+                  </div>
+                  <Badge variant="secondary">{quoteStatusLabels[quote.status]}</Badge>
+                  <p className="text-sm font-semibold">{formatBrazilianCurrency(quote.total.toString())}</p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
