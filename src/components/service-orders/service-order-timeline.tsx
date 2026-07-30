@@ -1,9 +1,11 @@
 import {
   CirclePlus,
+  ClipboardCheck,
   Clock3,
   MessageSquareText,
   PackageCheck,
   ShieldCheck,
+  Stethoscope,
 } from "lucide-react";
 
 import { formatBrazilianDateTime } from "@/lib/dates";
@@ -22,6 +24,14 @@ function EventIcon({ type }: { type: TimelineEvent["type"] }) {
 
   if (type === "OBSERVACAO_ADICIONADA") {
     return <MessageSquareText className="size-4" aria-hidden="true" />;
+  }
+
+  if (type === "CHECKLIST_ENTRADA_CONCLUIDO") {
+    return <ClipboardCheck className="size-4" aria-hidden="true" />;
+  }
+
+  if (type === "DIAGNOSTICO_REGISTRADO") {
+    return <Stethoscope className="size-4" aria-hidden="true" />;
   }
 
   return <Clock3 className="size-4" aria-hidden="true" />;

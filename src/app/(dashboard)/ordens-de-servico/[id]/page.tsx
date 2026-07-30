@@ -20,6 +20,8 @@ import {
   formatPhone,
 } from "@/components/customers/customer-formatters";
 import { formatEquipmentName } from "@/components/equipment/equipment-formatters";
+import { DiagnosticForm } from "@/components/service-orders/diagnostic-form";
+import { EntryChecklistForm } from "@/components/service-orders/entry-checklist-form";
 import { ReceiveEquipmentButton } from "@/components/service-orders/receive-equipment-button";
 import { formatServiceOrderNumber } from "@/components/service-orders/service-order-formatters";
 import { ServiceOrderObservationForm } from "@/components/service-orders/service-order-observation-form";
@@ -35,6 +37,8 @@ import {
 import { requireUser } from "@/lib/auth/session";
 import { formatBrazilianDateTime } from "@/lib/dates";
 import { serviceOrderStatusLabels } from "@/schemas/service-order.schema";
+import { diagnosticService } from "@/services/diagnostic.service";
+import { entryChecklistService } from "@/services/entry-checklist.service";
 import { serviceOrderService } from "@/services/service-order.service";
 
 export const metadata: Metadata = {
@@ -75,6 +79,11 @@ export default async function ServiceOrderDetailPage({
   if (!order) {
     notFound();
   }
+
+  const [entryChecklist, diagnostic] = await Promise.all([
+    entryChecklistService.getForServiceOrder(order.id),
+    diagnosticService.getForServiceOrder(order.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -212,6 +221,40 @@ export default async function ServiceOrderDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <Card className="self-start shadow-xs">
+          <CardHeader className="border-b">
+            <CardTitle>Checklist de entrada</CardTitle>
+            <CardDescription>
+              Conferência física do equipamento e dos acessórios recebidos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <EntryChecklistForm
+              serviceOrderId={order.id}
+              checklist={entryChecklist}
+              idempotencyKey={randomUUID()}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="self-start shadow-xs">
+          <CardHeader className="border-b">
+            <CardTitle>Diagnóstico</CardTitle>
+            <CardDescription>
+              Registro técnico atual da ordem de serviço.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DiagnosticForm
+              serviceOrderId={order.id}
+              diagnostic={diagnostic}
+              idempotencyKey={randomUUID()}
+            />
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

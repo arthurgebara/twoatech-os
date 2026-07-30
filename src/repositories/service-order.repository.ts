@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { entryChecklistItemDefinitions } from "@/schemas/entry-checklist.schema";
 
 const serviceOrderListSelect = {
   id: true,
@@ -234,6 +235,20 @@ export const serviceOrderRepository = {
         generalNotes: input.generalNotes,
         createdById: input.createdById,
         createdAt: input.occurredAt,
+        checklists: {
+          create: {
+            type: "ENTRY",
+            createdAt: input.occurredAt,
+            items: {
+              create: entryChecklistItemDefinitions.map((item, position) => ({
+                key: item.key,
+                label: item.label,
+                position,
+                createdAt: input.occurredAt,
+              })),
+            },
+          },
+        },
         timeline: {
           create: {
             type: "ORDEM_CRIADA",
