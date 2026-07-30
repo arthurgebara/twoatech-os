@@ -37,6 +37,9 @@ yarn-error.log*
 # IDEs
 .idea/
 
+# local session notes
+SESSION_HANDOFF.md
+
 # vercel
 .vercel
 
