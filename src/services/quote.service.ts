@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { Prisma } from "@/generated/prisma/client";
 import { quoteRepository, type QuoteTransaction } from "@/repositories/quote.repository";
 import { parseBrlValue } from "@/schemas/service-catalog.schema";
@@ -28,6 +30,22 @@ function nullable(value: string) {
 
 function parseDate(value: string) {
   return value ? new Date(`${value}T12:00:00.000Z`) : null;
+}
+
+function createRequestHash(input: CreateQuoteInput, responsibleUserId: string) {
+  return createHash("sha256")
+    .update(JSON.stringify({ responsibleUserId, ...input, items: input.items }))
+    .digest("hex");
+}
+
+function getRequestHash(metadata: Prisma.JsonValue | null) {
+  return typeof metadata === "object" &&
+    metadata !== null &&
+    !Array.isArray(metadata) &&
+    "requestHash" in metadata &&
+    typeof metadata.requestHash === "string"
+    ? metadata.requestHash
+    : null;
 }
 
 async function ensureNewEvent(
@@ -63,18 +81,32 @@ export const quoteService = {
   create(input: CreateQuoteInput, responsibleUserId: string) {
     const parsed = createQuoteSchema.parse(input);
     const eventKey = `quote:create:${parsed.idempotencyKey}`;
+    const requestHash = createRequestHash(parsed, responsibleUserId);
     return quoteRepository.transaction(async (transaction) => {
       const existingQuote = await quoteRepository.findByIdInTransaction(transaction, parsed.idempotencyKey);
       if (existingQuote) {
-        if (existingQuote.serviceOrder.id !== parsed.serviceOrderId || existingQuote.createdBy.id !== responsibleUserId) {
+        const existingEvent = await quoteRepository.findTimelineEvent(
+          transaction,
+          existingQuote.serviceOrder.id,
+          eventKey,
+        );
+        if (
+          existingQuote.serviceOrder.id !== parsed.serviceOrderId ||
+          existingQuote.createdBy.id !== responsibleUserId ||
+          existingEvent?.type !== "ORCAMENTO_CRIADO" ||
+          getRequestHash(existingEvent.metadata) !== requestHash
+        ) {
           throw new QuoteServiceError("Esta operação já foi utilizada para outro orçamento.");
         }
         return existingQuote;
       }
       const order = await quoteRepository.findOrder(transaction, parsed.serviceOrderId);
       if (!order) throw new QuoteServiceError("Ordem de serviço não encontrada.");
-      if (["DELIVERED", "CANCELED"].includes(order.status)) {
-        throw new QuoteServiceError("Não é possível criar orçamento para esta ordem.");
+      if (!["DIAGNOSING", "QUOTE_REJECTED"].includes(order.status)) {
+        throw new QuoteServiceError("O orçamento só pode ser criado após o diagnóstico ou para revisar uma proposta rejeitada.");
+      }
+      if (!order.diagnostic || order.checklists[0]?.status !== "COMPLETED") {
+        throw new QuoteServiceError("Conclua a checklist de entrada e registre o diagnóstico antes do orçamento.");
       }
       const catalogIds = [...new Set(parsed.items.map((item) => item.serviceCatalogItemId).filter(Boolean))];
       const catalogItems = await quoteRepository.findCatalogItems(transaction, catalogIds);
@@ -116,7 +148,7 @@ export const quoteService = {
         createdAt: occurredAt,
         items: { create: items },
       });
-      await quoteRepository.createTimelineEvent(transaction, {
+      const event = await quoteRepository.createTimelineEvent(transaction, {
         serviceOrderId: order.id,
         type: "ORCAMENTO_CRIADO",
         title: `Orçamento v${version} criado`,
@@ -124,9 +156,10 @@ export const quoteService = {
         responsibleUserId,
         occurredAt,
         createdAt: occurredAt,
-        metadata: { quoteId: quote.id, quoteNumber: quote.number, version, total: quote.total.toFixed(2) },
+        metadata: { quoteId: quote.id, quoteNumber: quote.number, version, total: quote.total.toFixed(2), requestHash },
         idempotencyKey: eventKey,
       });
+      if (event.count !== 1) throw new QuoteServiceError("A criação do orçamento já foi registrada.");
       return quote;
     });
   },
@@ -143,9 +176,9 @@ export const quoteService = {
     const parsed = quoteMutationSchema.parse(input);
     const eventKey = `quote:${target.toLowerCase()}:${parsed.idempotencyKey}`;
     const config = {
-      SENT: { from: "DRAFT" as const, orderStatus: "AWAITING_APPROVAL" as const, event: "ORCAMENTO_ENVIADO" as const, title: "Orçamento enviado" },
-      APPROVED: { from: "SENT" as const, orderStatus: "APPROVED" as const, event: "ORCAMENTO_APROVADO" as const, title: "Orçamento aprovado" },
-      REJECTED: { from: "SENT" as const, orderStatus: "QUOTE_REJECTED" as const, event: "ORCAMENTO_REJEITADO" as const, title: "Orçamento rejeitado" },
+      SENT: { from: "DRAFT" as const, allowedOrderStatuses: ["DIAGNOSING", "QUOTE_REJECTED"], orderStatus: "AWAITING_APPROVAL" as const, event: "ORCAMENTO_ENVIADO" as const, title: "Orçamento enviado" },
+      APPROVED: { from: "SENT" as const, allowedOrderStatuses: ["AWAITING_APPROVAL"], orderStatus: "APPROVED" as const, event: "ORCAMENTO_APROVADO" as const, title: "Orçamento aprovado" },
+      REJECTED: { from: "SENT" as const, allowedOrderStatuses: ["AWAITING_APPROVAL"], orderStatus: "QUOTE_REJECTED" as const, event: "ORCAMENTO_REJEITADO" as const, title: "Orçamento rejeitado" },
     }[target];
     return quoteRepository.transaction(async (transaction) => {
       const quote = await quoteRepository.findByIdInTransaction(transaction, parsed.quoteId);
@@ -153,6 +186,9 @@ export const quoteService = {
       const existing = await ensureNewEvent(transaction, quote.serviceOrder.id, eventKey, config.event);
       if (existing) return quote;
       if (quote.status !== config.from) throw new QuoteServiceError(`Este orçamento não pode ser alterado para ${target.toLowerCase()}.`);
+      if (!config.allowedOrderStatuses.includes(quote.serviceOrder.status)) {
+        throw new QuoteServiceError("A situação atual da ordem não permite esta ação no orçamento.");
+      }
       if (target === "APPROVED" && await quoteRepository.findApproved(transaction, quote.serviceOrder.id, quote.id)) {
         throw new QuoteServiceError("Já existe um orçamento aprovado para esta ordem.");
       }
@@ -167,7 +203,7 @@ export const quoteService = {
       const previousStatus = quote.serviceOrder.status;
       const orderChanged = await quoteRepository.updateOrderStatus(transaction, quote.serviceOrder.id, previousStatus, config.orderStatus);
       if (orderChanged.count !== 1) throw new QuoteServiceError("A situação da ordem mudou. Atualize a página.");
-      await quoteRepository.createTimelineEvent(transaction, {
+      const event = await quoteRepository.createTimelineEvent(transaction, {
         serviceOrderId: quote.serviceOrder.id,
         type: config.event,
         title: config.title,
@@ -184,6 +220,7 @@ export const quoteService = {
         },
         idempotencyKey: eventKey,
       });
+      if (event.count !== 1) throw new QuoteServiceError("Esta alteração já foi registrada.");
       return { ...quote, status: target, serviceOrder: { ...quote.serviceOrder, status: config.orderStatus } };
     });
   },

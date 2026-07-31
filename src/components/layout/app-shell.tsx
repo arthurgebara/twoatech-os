@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/sheet";
 import {
   navigationItems,
-  secondaryNavigationItems,
 } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -109,25 +108,6 @@ function SidebarContent({ pathname, user }: AppShellProps & { pathname: string }
         </p>
         <Navigation pathname={pathname} />
 
-        <div className="mt-5 border-t pt-4">
-          {secondaryNavigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-                )}
-              >
-                <Icon className="size-4" aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
       </div>
 
       <div className="border-t p-3">

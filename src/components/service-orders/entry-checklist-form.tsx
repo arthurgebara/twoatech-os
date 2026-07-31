@@ -22,6 +22,7 @@ type EntryChecklistFormProps = {
   serviceOrderId: string;
   checklist: EntryChecklistDetail | null;
   idempotencyKey: string;
+  canComplete: boolean;
 };
 
 function createDefaultItems(checklist: EntryChecklistDetail | null) {
@@ -46,6 +47,7 @@ export function EntryChecklistForm({
   serviceOrderId,
   checklist,
   idempotencyKey,
+  canComplete,
 }: EntryChecklistFormProps) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
@@ -182,7 +184,7 @@ export function EntryChecklistForm({
           <Button
             type="button"
             variant="outline"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canComplete}
             onClick={handleSubmit((values) => save(values, false))}
           >
             {isSubmitting ? (
@@ -205,6 +207,12 @@ export function EntryChecklistForm({
             Concluir checklist
           </Button>
         </div>
+      ) : null}
+
+      {!isCompleted && !canComplete ? (
+        <p className="text-xs text-muted-foreground">
+          Registre o recebimento do equipamento para liberar a conclusão.
+        </p>
       ) : null}
 
       {message ? (

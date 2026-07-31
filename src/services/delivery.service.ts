@@ -84,6 +84,7 @@ export const deliveryService = {
       const occurredAt = new Date();
       const changed = await deliveryRepository.updateStatus(transaction, order.id, { notIn: ["DELIVERED", "CANCELED"] }, { status: "CANCELED" });
       if (changed.count !== 1) throw new DeliveryServiceError("A situação da ordem mudou. Atualize a página.");
+      await deliveryRepository.cancelOpenQuotes(transaction, order.id);
       const event = await deliveryRepository.createEvent(transaction, {
         serviceOrderId: order.id,
         type: "ORDEM_CANCELADA",

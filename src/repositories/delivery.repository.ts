@@ -38,4 +38,13 @@ export const deliveryRepository = {
   createEvent(transaction: DeliveryTransaction, data: Prisma.ServiceOrderTimelineEventCreateManyInput) {
     return transaction.serviceOrderTimelineEvent.createMany({ data, skipDuplicates: true });
   },
+  cancelOpenQuotes(transaction: DeliveryTransaction, serviceOrderId: string) {
+    return transaction.quote.updateMany({
+      where: {
+        serviceOrderId,
+        status: { in: ["DRAFT", "SENT"] },
+      },
+      data: { status: "CANCELED" },
+    });
+  },
 };

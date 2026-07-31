@@ -24,6 +24,7 @@ type DiagnosticFormProps = {
   serviceOrderId: string;
   diagnostic: DiagnosticDetail | null;
   idempotencyKey: string;
+  editable: boolean;
 };
 
 function isDiagnosticFormField(
@@ -40,6 +41,7 @@ export function DiagnosticForm({
   serviceOrderId,
   diagnostic,
   idempotencyKey,
+  editable,
 }: DiagnosticFormProps) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
@@ -98,6 +100,11 @@ export function DiagnosticForm({
           {formatBrazilianDateTime(diagnostic.registeredAt)}.
         </p>
       ) : null}
+      {!editable ? (
+        <p className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          O diagnóstico fica disponível após a conclusão da checklist de entrada e é bloqueado quando a ordem avança para aprovação.
+        </p>
+      ) : null}
 
       {errors.root?.message ? (
         <p
@@ -115,6 +122,7 @@ export function DiagnosticForm({
           rows={5}
           placeholder="Descreva os testes realizados e o problema identificado"
           aria-invalid={Boolean(errors.description)}
+          disabled={!editable}
           className="w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           {...register("description")}
         />
@@ -132,6 +140,7 @@ export function DiagnosticForm({
           rows={4}
           placeholder="Conclusão técnica, se disponível"
           aria-invalid={Boolean(errors.technicalConclusion)}
+          disabled={!editable}
           className="w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           {...register("technicalConclusion")}
         />
@@ -149,6 +158,7 @@ export function DiagnosticForm({
           rows={4}
           placeholder="Recomendações técnicas ou próximos passos"
           aria-invalid={Boolean(errors.recommendations)}
+          disabled={!editable}
           className="w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
           {...register("recommendations")}
         />
@@ -160,7 +170,7 @@ export function DiagnosticForm({
       </div>
 
       <div className="flex justify-end border-t pt-4">
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || !editable}>
           {isSubmitting ? (
             <LoaderCircle className="animate-spin" aria-hidden="true" />
           ) : (

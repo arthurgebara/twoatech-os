@@ -99,6 +99,13 @@ export default async function ServiceOrderDetailPage({
     diagnosticService.getForServiceOrder(order.id),
     quoteService.listForServiceOrder(order.id),
   ]);
+  const diagnosticEditable =
+    entryChecklist?.status === "COMPLETED" &&
+    ["RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status);
+  const quoteCreationAvailable =
+    entryChecklist?.status === "COMPLETED" &&
+    Boolean(diagnostic) &&
+    ["DIAGNOSING", "QUOTE_REJECTED"].includes(order.status);
 
   return (
     <div className="space-y-6">
@@ -283,6 +290,7 @@ export default async function ServiceOrderDetailPage({
               serviceOrderId={order.id}
               checklist={entryChecklist}
               idempotencyKey={randomUUID()}
+              canComplete={order.status === "RECEIVED"}
             />
           </CardContent>
         </Card>
@@ -299,6 +307,7 @@ export default async function ServiceOrderDetailPage({
               serviceOrderId={order.id}
               diagnostic={diagnostic}
               idempotencyKey={randomUUID()}
+              editable={diagnosticEditable}
             />
           </CardContent>
         </Card>
@@ -324,7 +333,7 @@ export default async function ServiceOrderDetailPage({
             <CardTitle>Orçamentos</CardTitle>
             <CardDescription>Versões e situação comercial desta ordem.</CardDescription>
           </div>
-          {!["DELIVERED", "CANCELED"].includes(order.status) ? (
+          {quoteCreationAvailable ? (
             <Link
               href={`/ordens-de-servico/${order.id}/orcamentos/novo` as Route}
               className={cn(buttonVariants({ size: "sm" }))}

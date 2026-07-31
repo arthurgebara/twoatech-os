@@ -87,7 +87,7 @@ export const entryChecklistService = {
     const eventKey = `entry-checklist:${parsed.idempotencyKey}`;
 
     return entryChecklistRepository.transaction(async (transaction) => {
-      await ensureOrderExists(transaction, parsed.serviceOrderId);
+      const order = await ensureOrderExists(transaction, parsed.serviceOrderId);
       const occurredAt = new Date();
       const checklist = await entryChecklistRepository.ensureEntryChecklist(
         transaction,
@@ -143,6 +143,12 @@ export const entryChecklistService = {
         }
 
         return saved;
+      }
+
+      if (order.status !== "RECEIVED") {
+        throw new EntryChecklistServiceError(
+          "Registre o recebimento do equipamento antes de concluir a checklist de entrada.",
+        );
       }
 
       const completion = await entryChecklistRepository.markCompleted(

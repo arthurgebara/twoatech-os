@@ -51,7 +51,9 @@ function getRequestHash(metadata: Prisma.JsonValue | null) {
 }
 
 function nextStatus(status: ServiceOrderStatus): ServiceOrderStatus {
-  return status === "OPEN" || status === "RECEIVED" ? "DIAGNOSING" : status;
+  return status === "RECEIVED" || status === "QUOTE_REJECTED"
+    ? "DIAGNOSING"
+    : status;
 }
 
 export const diagnosticService = {
@@ -78,6 +80,16 @@ export const diagnosticService = {
 
       if (!order) {
         throw new DiagnosticServiceError("Ordem de serviço não encontrada.");
+      }
+      if (!["RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status)) {
+        throw new DiagnosticServiceError(
+          "O diagnóstico não pode ser alterado na situação atual da ordem.",
+        );
+      }
+      if (order.checklists[0]?.status !== "COMPLETED") {
+        throw new DiagnosticServiceError(
+          "Conclua a checklist de entrada antes de registrar o diagnóstico.",
+        );
       }
 
       const existingEvent =

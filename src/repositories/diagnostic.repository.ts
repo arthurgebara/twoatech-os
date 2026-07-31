@@ -65,6 +65,11 @@ export const diagnosticRepository = {
         id: true,
         number: true,
         status: true,
+        checklists: {
+          where: { type: "ENTRY" },
+          select: { status: true },
+          take: 1,
+        },
       },
     });
   },

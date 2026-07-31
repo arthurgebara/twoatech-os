@@ -111,7 +111,17 @@ export const quoteRepository = {
   findOrder(transaction: QuoteTransaction, id: string) {
     return transaction.serviceOrder.findUnique({
       where: { id },
-      select: { id: true, number: true, status: true },
+      select: {
+        id: true,
+        number: true,
+        status: true,
+        diagnostic: { select: { id: true } },
+        checklists: {
+          where: { type: "ENTRY" },
+          select: { status: true },
+          take: 1,
+        },
+      },
     });
   },
   findCatalogItems(transaction: QuoteTransaction, ids: string[]) {

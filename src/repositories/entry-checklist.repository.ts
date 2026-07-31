@@ -74,6 +74,7 @@ export const entryChecklistRepository = {
       select: {
         id: true,
         number: true,
+        status: true,
       },
     });
   },
