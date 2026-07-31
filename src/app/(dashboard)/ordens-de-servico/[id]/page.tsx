@@ -25,6 +25,8 @@ import {
 import { formatEquipmentName } from "@/components/equipment/equipment-formatters";
 import { DiagnosticForm } from "@/components/service-orders/diagnostic-form";
 import { EntryChecklistForm } from "@/components/service-orders/entry-checklist-form";
+import { ExitChecklistForm } from "@/components/service-orders/exit-checklist-form";
+import { DeliveryControls } from "@/components/service-orders/delivery-controls";
 import { ReceiveEquipmentButton } from "@/components/service-orders/receive-equipment-button";
 import { formatServiceOrderNumber } from "@/components/service-orders/service-order-formatters";
 import { ServiceOrderObservationForm } from "@/components/service-orders/service-order-observation-form";
@@ -47,6 +49,7 @@ import { quoteStatusLabels } from "@/schemas/quote.schema";
 import { serviceOrderStatusLabels } from "@/schemas/service-order.schema";
 import { diagnosticService } from "@/services/diagnostic.service";
 import { entryChecklistService } from "@/services/entry-checklist.service";
+import { exitChecklistService } from "@/services/exit-checklist.service";
 import { quoteService } from "@/services/quote.service";
 import { serviceOrderService } from "@/services/service-order.service";
 
@@ -89,8 +92,9 @@ export default async function ServiceOrderDetailPage({
     notFound();
   }
 
-  const [entryChecklist, diagnostic, quotes] = await Promise.all([
+  const [entryChecklist, exitChecklist, diagnostic, quotes] = await Promise.all([
     entryChecklistService.getForServiceOrder(order.id),
+    exitChecklistService.getForServiceOrder(order.id),
     diagnosticService.getForServiceOrder(order.id),
     quoteService.listForServiceOrder(order.id),
   ]);
@@ -128,6 +132,7 @@ export default async function ServiceOrderDetailPage({
       </header>
 
       <ServiceExecutionControls serviceOrderId={order.id} status={order.status} />
+      <DeliveryControls serviceOrderId={order.id} status={order.status} />
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
@@ -267,6 +272,20 @@ export default async function ServiceOrderDetailPage({
           </CardContent>
         </Card>
       </section>
+
+      <Card className="shadow-xs">
+        <CardHeader className="border-b">
+          <CardTitle>Checklist de saída</CardTitle>
+          <CardDescription>Testes finais, montagem, limpeza e acessórios antes da entrega.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ExitChecklistForm
+            serviceOrderId={order.id}
+            checklist={exitChecklist}
+            idempotencyKey={randomUUID()}
+          />
+        </CardContent>
+      </Card>
 
       <Card className="shadow-xs">
         <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
