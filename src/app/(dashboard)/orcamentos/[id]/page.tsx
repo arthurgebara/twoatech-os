@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, ClipboardList, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardList, Printer, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,10 +7,12 @@ import { formatEquipmentName } from "@/components/equipment/equipment-formatters
 import { QuoteActions } from "@/components/quotes/quote-actions";
 import { formatServiceOrderNumber } from "@/components/service-orders/service-order-formatters";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBrazilianCurrency } from "@/lib/currency";
 import { formatBrazilianDateTime } from "@/lib/dates";
 import { requireUser } from "@/lib/auth/session";
+import { cn } from "@/lib/utils";
 import { quoteItemTypeLabels, quoteStatusLabels } from "@/schemas/quote.schema";
 import { quoteService } from "@/services/quote.service";
 
@@ -33,7 +35,12 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Orçamento #{quote.number}</h1><Badge variant="secondary">{quoteStatusLabels[quote.status]}</Badge></div>
           <p className="mt-1 text-sm text-muted-foreground">Versão {quote.version} · criado por {quote.createdBy.name} em {formatBrazilianDateTime(quote.createdAt)}</p>
         </div>
-        <QuoteActions quoteId={quote.id} status={quote.status} />
+        <div className="space-y-3">
+          <QuoteActions quoteId={quote.id} status={quote.status} />
+          <a href={`/api/pdfs/orcamentos/${quote.id}`} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+            <Printer aria-hidden="true" /> Abrir PDF
+          </a>
+        </div>
       </header>
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <Card>

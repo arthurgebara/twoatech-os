@@ -9,6 +9,7 @@ import {
   Laptop,
   Package,
   Plus,
+  Printer,
   Phone,
   StickyNote,
   UserRound,
@@ -129,6 +130,36 @@ export default async function ServiceOrderDetailPage({
             idempotencyKey={randomUUID()}
           />
         ) : null}
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={`/api/pdfs/ordens-de-servico/${order.id}?timeline=1`}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            <Printer aria-hidden="true" /> PDF da ordem
+          </a>
+          {entryChecklist ? (
+            <a
+              href={`/api/pdfs/checklists/${order.id}/entrada`}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              PDF entrada
+            </a>
+          ) : null}
+          {exitChecklist ? (
+            <a
+              href={`/api/pdfs/checklists/${order.id}/saida`}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              PDF saída
+            </a>
+          ) : null}
+        </div>
       </header>
 
       <ServiceExecutionControls serviceOrderId={order.id} status={order.status} />
