@@ -28,6 +28,7 @@ import { EntryChecklistForm } from "@/components/service-orders/entry-checklist-
 import { ReceiveEquipmentButton } from "@/components/service-orders/receive-equipment-button";
 import { formatServiceOrderNumber } from "@/components/service-orders/service-order-formatters";
 import { ServiceOrderObservationForm } from "@/components/service-orders/service-order-observation-form";
+import { ServiceExecutionControls } from "@/components/service-orders/service-execution-controls";
 import { ServiceOrderTimeline } from "@/components/service-orders/service-order-timeline";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -125,6 +126,8 @@ export default async function ServiceOrderDetailPage({
           />
         ) : null}
       </header>
+
+      <ServiceExecutionControls serviceOrderId={order.id} status={order.status} />
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
