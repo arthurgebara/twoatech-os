@@ -58,7 +58,10 @@ export const quoteIdSchema = uuidSchema;
 
 export const quoteListQuerySchema = z.object({
   search: z.string().trim().max(100).default(""),
-  status: z.enum(QuoteStatus).optional(),
+  status: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.enum(QuoteStatus).optional(),
+  ),
   page: z.coerce.number().int().positive().default(1),
 });
 
