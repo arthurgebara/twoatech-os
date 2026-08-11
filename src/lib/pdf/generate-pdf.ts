@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import PDFDocument from "pdfkit";
 
 import type { ChecklistPdfDto, QuotePdfDto, ServiceOrderPdfDto } from "@/dtos/pdf-document.dto";
@@ -6,10 +8,12 @@ import { formatBrazilianDateTime } from "@/lib/dates";
 import { quoteItemTypeLabels, quoteStatusLabels } from "@/schemas/quote.schema";
 import { serviceOrderStatusLabels } from "@/schemas/service-order.schema";
 
-const BLUE = "#164e63";
-const TEXT = "#172033";
-const MUTED = "#667085";
-const LINE = "#d7dee8";
+const BRAND_NAVY = "#011C26";
+const BRAND_LIME = "#BFF205";
+const TEXT = BRAND_NAVY;
+const MUTED = "#536A70";
+const LINE = "#D5E0DE";
+const BRAND_LOGO_PATH = path.join(process.cwd(), "public", "twoatech-logo.png");
 
 function dateOnly(value: Date | null) {
   return value ? new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(value) : "Não informado";
@@ -36,9 +40,10 @@ function documentBuffer(
     for (let index = 0; index < range.count; index += 1) {
       doc.switchToPage(index);
       doc.save();
-      doc.fillColor(BLUE).font("Helvetica-Bold").fontSize(16).text("TwoATech OS", 48, 30, { lineBreak: false });
-      doc.fillColor(MUTED).font("Helvetica").fontSize(8).text(title, 48, 51, { lineBreak: false });
-      doc.moveTo(48, 66).lineTo(547, 66).strokeColor(LINE).lineWidth(0.6).stroke();
+      doc.image(BRAND_LOGO_PATH, 48, 24, { width: 34, height: 34 });
+      doc.fillColor(BRAND_NAVY).font("Helvetica-Bold").fontSize(16).text("TwoATech OS", 92, 28, { lineBreak: false });
+      doc.fillColor(MUTED).font("Helvetica").fontSize(8).text(title, 92, 49, { lineBreak: false });
+      doc.moveTo(48, 66).lineTo(547, 66).strokeColor(BRAND_LIME).lineWidth(1.2).stroke();
       doc.moveTo(48, 789).lineTo(547, 789).strokeColor(LINE).lineWidth(0.6).stroke();
       doc.fillColor(MUTED).fontSize(8).text("Documento gerado pelo TwoATech OS", 48, 799, { lineBreak: false });
       doc.text(`Página ${index + 1} de ${range.count}`, 470, 799, { lineBreak: false });
@@ -50,7 +55,7 @@ function documentBuffer(
 
 function section(doc: PDFKit.PDFDocument, title: string) {
   if (doc.y > 720) doc.addPage();
-  doc.moveDown(0.7).fillColor(BLUE).font("Helvetica-Bold").fontSize(11).text(title.toUpperCase());
+  doc.moveDown(0.7).fillColor(BRAND_NAVY).font("Helvetica-Bold").fontSize(11).text(title.toUpperCase());
   doc.moveDown(0.25).moveTo(48, doc.y).lineTo(547, doc.y).strokeColor(LINE).lineWidth(0.5).stroke();
   doc.moveDown(0.55);
 }
@@ -134,7 +139,7 @@ export function generateQuotePdf(dto: QuotePdfDto) {
     section(doc, "Totais");
     line(doc, "Subtotal", formatBrazilianCurrency(dto.subtotal));
     line(doc, "Desconto", formatBrazilianCurrency(dto.discount));
-    doc.fillColor(BLUE).font("Helvetica-Bold").fontSize(12).text(`TOTAL: ${formatBrazilianCurrency(dto.total)}`, { align: "right" });
+    doc.fillColor(BRAND_NAVY).font("Helvetica-Bold").fontSize(12).text(`TOTAL: ${formatBrazilianCurrency(dto.total)}`, { align: "right" });
     section(doc, "Observações");
     paragraph(doc, "Condições e observações", dto.notes);
   });

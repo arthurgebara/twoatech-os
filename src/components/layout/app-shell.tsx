@@ -58,13 +58,13 @@ function Navigation({ pathname }: { pathname: string }) {
             className={cn(
               "group flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               isActive &&
-                "bg-sidebar-accent font-medium text-sidebar-accent-foreground shadow-xs ring-1 ring-sidebar-border",
+                "bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-sm ring-1 ring-sidebar-primary/30",
             )}
           >
             <Icon
               className={cn(
                 "size-4 text-sidebar-foreground/45 transition-colors group-hover:text-sidebar-accent-foreground",
-                isActive && "text-sidebar-accent-foreground",
+                isActive && "text-sidebar-primary-foreground",
               )}
               aria-hidden="true"
             />

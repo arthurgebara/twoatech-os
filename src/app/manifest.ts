@@ -7,8 +7,15 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Gestão de assistência técnica especializada em computadores.",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#0a0a0b",
-    theme_color: "#0a0a0b",
+    background_color: "#011C26",
+    theme_color: "#BFF205",
     lang: "pt-BR",
+    icons: [
+      {
+        src: "/twoatech-logo.png",
+        sizes: "99x99",
+        type: "image/png",
+      },
+    ],
   };
 }
