@@ -20,5 +20,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|icon|manifest.webmanifest).*)"],
+  matcher: [
+    "/((?!api/auth|_next/static|_next/image|icon|manifest.webmanifest|twoatech-logo.png).*)",
+  ],
 };
