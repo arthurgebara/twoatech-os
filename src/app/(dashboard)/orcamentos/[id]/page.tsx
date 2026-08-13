@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { formatEquipmentName } from "@/components/equipment/equipment-formatters";
 import { QuoteActions } from "@/components/quotes/quote-actions";
+import { ShareQuotePdfButton } from "@/components/quotes/share-quote-pdf-button";
 import { formatServiceOrderNumber } from "@/components/service-orders/service-order-formatters";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -37,9 +38,17 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         </div>
         <div className="space-y-3">
           <QuoteActions quoteId={quote.id} status={quote.status} />
-          <a href={`/api/pdfs/orcamentos/${quote.id}`} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-            <Printer aria-hidden="true" /> Abrir PDF
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <ShareQuotePdfButton
+              customerName={quote.serviceOrder.customer.name}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              version={quote.version}
+            />
+            <a href={`/api/pdfs/orcamentos/${quote.id}`} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              <Printer aria-hidden="true" /> Abrir PDF
+            </a>
+          </div>
         </div>
       </header>
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
