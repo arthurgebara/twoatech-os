@@ -50,10 +50,9 @@ function getRequestHash(metadata: Prisma.JsonValue | null) {
     : null;
 }
 
-function nextStatus(status: ServiceOrderStatus): ServiceOrderStatus {
-  return status === "RECEIVED" || status === "QUOTE_REJECTED"
-    ? "DIAGNOSING"
-    : status;
+function nextStatus(status: ServiceOrderStatus, hasApprovedQuote: boolean): ServiceOrderStatus {
+  if (status === "RECEIVED" && hasApprovedQuote) return "APPROVED";
+  return status === "RECEIVED" || status === "QUOTE_REJECTED" ? "DIAGNOSING" : status;
 }
 
 export const diagnosticService = {
@@ -113,7 +112,7 @@ export const diagnosticService = {
       }
 
       const occurredAt = new Date();
-      const newStatus = nextStatus(order.status);
+      const newStatus = nextStatus(order.status, order.quotes.length > 0);
 
       await diagnosticRepository.save(transaction, {
         serviceOrderId: order.id,
@@ -129,6 +128,7 @@ export const diagnosticService = {
           transaction,
           order.id,
           order.status,
+          newStatus === "APPROVED" ? "APPROVED" : "DIAGNOSING",
         );
 
         if (statusUpdate.count !== 1) {

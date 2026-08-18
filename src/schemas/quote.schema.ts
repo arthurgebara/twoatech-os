@@ -36,7 +36,11 @@ export const quoteItemSchema = z.object({
 
 export const createQuoteSchema = z.object({
   idempotencyKey: uuidSchema,
-  serviceOrderId: uuidSchema,
+  customerId: uuidSchema,
+  equipmentId: uuidSchema,
+  reportedProblem: z.string().trim().min(5, "Descreva o problema ou a necessidade do cliente.").max(5000, "O relato deve ter no máximo 5.000 caracteres."),
+  receivedAccessories: z.string().trim().max(2000, "Os acessórios devem ter no máximo 2.000 caracteres."),
+  generalNotes: z.string().trim().max(3000, "As observações gerais devem ter no máximo 3.000 caracteres."),
   validUntil: z
     .string()
     .trim()

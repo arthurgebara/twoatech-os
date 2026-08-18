@@ -101,6 +101,14 @@ export function generateServiceOrderPdf(dto: ServiceOrderPdfDto) {
       paragraph(doc, "Recomendações", dto.diagnostic.recommendations);
       line(doc, "Registrado por", `${dto.diagnostic.registeredBy} em ${formatBrazilianDateTime(dto.diagnostic.registeredAt)}`);
     }
+    if (dto.serviceReport) {
+      section(doc, "Relatório do serviço");
+      paragraph(doc, "Serviço realizado", dto.serviceReport.workPerformed);
+      paragraph(doc, "Peças utilizadas", dto.serviceReport.partsUsed);
+      paragraph(doc, "Testes realizados", dto.serviceReport.testsPerformed);
+      paragraph(doc, "Observações técnicas", dto.serviceReport.notes);
+      line(doc, "Registrado por", `${dto.serviceReport.registeredBy} em ${formatBrazilianDateTime(dto.serviceReport.registeredAt)}`);
+    }
     if (dto.quotes.length) {
       section(doc, "Orçamentos");
       for (const quote of dto.quotes) {
@@ -127,7 +135,8 @@ export function generateQuotePdf(dto: QuotePdfDto) {
   const title = `Orçamento #${dto.number} - versão ${dto.version}`;
   return documentBuffer(title, "Orçamento de serviços", (doc) => {
     doc.fillColor(TEXT).font("Helvetica-Bold").fontSize(20).text(title);
-    doc.moveDown(0.25).fillColor(MUTED).font("Helvetica").fontSize(9).text(`OS #${String(dto.serviceOrderNumber).padStart(6, "0")}  |  ${quoteStatusLabels[dto.status]}  |  Validade: ${dateOnly(dto.validUntil)}`);
+    const orderReference = dto.serviceOrderNumber ? `OS #${String(dto.serviceOrderNumber).padStart(6, "0")}` : "OS gerada após aprovação";
+    doc.moveDown(0.25).fillColor(MUTED).font("Helvetica").fontSize(9).text(`${orderReference}  |  ${quoteStatusLabels[dto.status]}  |  Validade: ${dateOnly(dto.validUntil)}`);
     customerEquipment(doc, dto.customer, dto.equipment);
     section(doc, "Itens do orçamento");
     for (const item of dto.items) {

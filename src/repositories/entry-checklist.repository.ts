@@ -178,6 +178,36 @@ export const entryChecklistRepository = {
     });
   },
 
+  markOrderReceived(
+    transaction: EntryChecklistTransaction,
+    serviceOrderId: string,
+    occurredAt: Date,
+  ) {
+    return transaction.serviceOrder.updateMany({
+      where: { id: serviceOrderId, status: "OPEN" },
+      data: { status: "RECEIVED", receivedAt: occurredAt },
+    });
+  },
+
+  createReceivedEvent(
+    transaction: EntryChecklistTransaction,
+    input: CompleteEntryChecklistInput,
+  ) {
+    return transaction.serviceOrderTimelineEvent.createMany({
+      data: {
+        serviceOrderId: input.serviceOrderId,
+        type: "EQUIPAMENTO_RECEBIDO",
+        title: "Equipamento recebido",
+        description: "Recebimento confirmado junto com a checklist de entrada.",
+        responsibleUserId: input.responsibleUserId,
+        occurredAt: input.occurredAt,
+        metadata: { previousStatus: "OPEN", newStatus: "RECEIVED" },
+        idempotencyKey: `entry-receive:${input.idempotencyKey}`,
+      },
+      skipDuplicates: true,
+    });
+  },
+
   findTimelineEventByKey(
     transaction: EntryChecklistTransaction,
     serviceOrderId: string,

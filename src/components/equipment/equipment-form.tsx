@@ -31,6 +31,8 @@ type EquipmentFormProps = {
   equipmentId?: string;
   currentCustomerId?: string;
   defaultValues?: EquipmentFormInput;
+  embedded?: boolean;
+  onCreated?: (equipmentId: string, values: EquipmentFormInput) => void;
 };
 
 const emptyValues: EquipmentFormInput = {
@@ -64,6 +66,8 @@ export function EquipmentForm({
   equipmentId,
   currentCustomerId,
   defaultValues = emptyValues,
+  embedded = false,
+  onCreated,
 }: EquipmentFormProps) {
   const router = useRouter();
   const {
@@ -103,6 +107,10 @@ export function EquipmentForm({
       return;
     }
 
+    if (embedded && result.equipmentId) {
+      onCreated?.(result.equipmentId, values);
+      return;
+    }
     router.push(`/equipamentos/${result.equipmentId}`);
     router.refresh();
   }
@@ -255,13 +263,15 @@ export function EquipmentForm({
       </section>
 
       <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
-        <Link
-          href={returnHref}
-          className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
-        >
-          <ArrowLeft aria-hidden="true" />
-          Cancelar
-        </Link>
+        {!embedded ? (
+          <Link
+            href={returnHref}
+            className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+          >
+            <ArrowLeft aria-hidden="true" />
+            Cancelar
+          </Link>
+        ) : null}
         <Button type="submit" size="lg" disabled={isSubmitting}>
           {isSubmitting ? (
             <LoaderCircle className="animate-spin" aria-hidden="true" />

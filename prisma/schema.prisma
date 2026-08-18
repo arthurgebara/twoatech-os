@@ -66,6 +66,7 @@ enum ServiceOrderTimelineEventType {
   SERVICO_INICIADO
   AGUARDANDO_PECA
   PECA_RECEBIDA
+  RELATORIO_SERVICO_REGISTRADO
   SERVICO_CONCLUIDO
   CHECKLIST_SAIDA_CONCLUIDO
   EQUIPAMENTO_PRONTO
@@ -86,6 +87,7 @@ model User {
   createdServiceOrders  ServiceOrder[]              @relation("ServiceOrderCreatedBy")
   completedChecklists   ServiceOrderChecklist[]     @relation("ChecklistCompletedBy")
   registeredDiagnostics Diagnostic[]                 @relation("DiagnosticRegisteredBy")
+  registeredServiceReports ServiceReport[]           @relation("ServiceReportRegisteredBy")
   createdQuotes         Quote[]                      @relation("QuoteCreatedBy")
   timelineEvents        ServiceOrderTimelineEvent[] @relation("TimelineResponsibleUser")
 
@@ -106,6 +108,7 @@ model Customer {
   updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
   equipment      Equipment[]
   serviceOrders  ServiceOrder[]
+  quotes         Quote[]
 
   @@index([name])
   @@index([phone])
@@ -127,6 +130,7 @@ model Equipment {
   updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
   customer       Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
   serviceOrders  ServiceOrder[]
+  quotes         Quote[]
 
   @@index([customerId])
   @@index([serialNumber])
@@ -152,6 +156,7 @@ model ServiceOrder {
   createdBy           User                        @relation("ServiceOrderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   checklists          ServiceOrderChecklist[]
   diagnostic          Diagnostic?
+  serviceReport       ServiceReport?
   quotes              Quote[]
   timeline            ServiceOrderTimelineEvent[]
 
@@ -213,6 +218,23 @@ model Diagnostic {
   @@map("diagnostics")
 }
 
+model ServiceReport {
+  id              String       @id @default(uuid()) @db.Uuid
+  serviceOrderId  String       @unique @db.Uuid
+  workPerformed   String       @db.Text
+  partsUsed       String?      @db.Text
+  testsPerformed  String?      @db.Text
+  notes           String?      @db.Text
+  registeredById  String       @db.Uuid
+  registeredAt    DateTime     @default(now()) @db.Timestamptz(3)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(3)
+  serviceOrder    ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  registeredBy    User         @relation("ServiceReportRegisteredBy", fields: [registeredById], references: [id], onDelete: Restrict)
+
+  @@map("service_reports")
+}
+
 model ServiceCatalogItem {
   id               String      @id @default(uuid()) @db.Uuid
   name             String      @db.VarChar(160)
@@ -231,9 +253,15 @@ model ServiceCatalogItem {
 model Quote {
   id             String       @id @default(uuid()) @db.Uuid
   number         Int          @unique @default(autoincrement())
-  serviceOrderId String       @db.Uuid
+  seriesId       String       @db.Uuid
+  customerId     String       @db.Uuid
+  equipmentId    String       @db.Uuid
+  serviceOrderId String?      @db.Uuid
   version        Int          @default(1)
   status         QuoteStatus  @default(DRAFT)
+  reportedProblem     String   @db.Text
+  receivedAccessories String?  @db.Text
+  generalNotes        String?  @db.Text
   subtotal       Decimal      @default(0) @db.Decimal(12, 2)
   discount       Decimal      @default(0) @db.Decimal(12, 2)
   total          Decimal      @default(0) @db.Decimal(12, 2)
@@ -242,14 +270,20 @@ model Quote {
   sentAt         DateTime?    @db.Timestamptz(3)
   approvedAt     DateTime?    @db.Timestamptz(3)
   rejectedAt     DateTime?    @db.Timestamptz(3)
+  sentIdempotencyKey     String? @db.VarChar(128)
+  decisionIdempotencyKey String? @db.VarChar(128)
   createdById    String       @db.Uuid
   createdAt      DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
-  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  equipment      Equipment    @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  serviceOrder   ServiceOrder? @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
   createdBy      User         @relation("QuoteCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   items          QuoteItem[]
 
-  @@unique([serviceOrderId, version])
+  @@unique([seriesId, version])
+  @@index([customerId])
+  @@index([equipmentId])
   @@index([serviceOrderId, status])
   @@map("quotes")
 }

@@ -24,7 +24,7 @@ export const dashboardService = {
     return {
       metrics: {
         open: openStatuses.reduce((sum, status) => sum + count(status), 0),
-        awaitingApproval: count("AWAITING_APPROVAL"),
+        awaitingApproval: count("AWAITING_APPROVAL") + snapshot.awaitingApprovalQuotes,
         inProgress: count("IN_PROGRESS"),
         waitingPart: count("WAITING_PART"),
         readyForPickup: count("READY_FOR_PICKUP"),

@@ -42,7 +42,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Visão geral</h1>
           <p className="mt-1 text-sm text-muted-foreground">Acompanhe a operação da assistência técnica em um só lugar.</p>
         </div>
-        <Link href="/ordens-de-servico/nova" className={cn(buttonVariants({ size: "lg" }))}><Plus aria-hidden="true" />Nova ordem de serviço</Link>
+        <Link href="/orcamentos/novo" className={cn(buttonVariants({ size: "lg" }))}><Plus aria-hidden="true" />Novo atendimento</Link>
       </header>
       <section aria-label="Indicadores" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {metrics.map(({ label, value, icon: Icon, helper }) => (
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
           <CardHeader className="border-b"><CardTitle>Ordens recentes</CardTitle><CardDescription>Últimos atendimentos cadastrados.</CardDescription></CardHeader>
           <CardContent className="px-0">
             {data.recentOrders.length === 0 ? (
-              <div className="flex min-h-72 flex-col items-center justify-center text-center"><FileCheck2 className="mb-3 size-8 text-muted-foreground" aria-hidden="true" /><p className="font-medium">Nenhuma ordem cadastrada</p><p className="text-sm text-muted-foreground">Crie a primeira ordem para iniciar a operação.</p></div>
+              <div className="flex min-h-72 flex-col items-center justify-center text-center"><FileCheck2 className="mb-3 size-8 text-muted-foreground" aria-hidden="true" /><p className="font-medium">Nenhuma ordem cadastrada</p><p className="text-sm text-muted-foreground">A primeira ordem surgirá quando um orçamento for aprovado.</p></div>
             ) : (
               <div className="divide-y">{data.recentOrders.map((order) => (
                 <Link key={order.id} href={`/ordens-de-servico/${order.id}` as Route} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_1fr_auto] sm:items-center">

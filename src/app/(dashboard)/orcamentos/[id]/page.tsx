@@ -40,7 +40,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           <QuoteActions quoteId={quote.id} status={quote.status} />
           <div className="flex flex-wrap gap-2">
             <ShareQuotePdfButton
-              customerName={quote.serviceOrder.customer.name}
+              customerName={quote.customer.name}
               quoteId={quote.id}
               quoteNumber={quote.number}
               version={quote.version}
@@ -70,12 +70,12 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         </Card>
         <div className="space-y-4">
           <Card><CardHeader><CardTitle className="text-base">Referências</CardTitle></CardHeader><CardContent className="space-y-4 text-sm">
-            <div className="flex gap-3"><ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Ordem</p><Link className="font-medium hover:text-primary" href={`/ordens-de-servico/${quote.serviceOrder.id}`}>{formatServiceOrderNumber(quote.serviceOrder.number)}</Link></div></div>
-            <div className="flex gap-3"><UserRound className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{quote.serviceOrder.customer.name}</p></div></div>
-            <div className="flex gap-3"><ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{formatEquipmentName(quote.serviceOrder.equipment)}</p></div></div>
+            <div className="flex gap-3"><ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Ordem</p>{quote.serviceOrder ? <Link className="font-medium hover:text-primary" href={`/ordens-de-servico/${quote.serviceOrder.id}`}>{formatServiceOrderNumber(quote.serviceOrder.number)}</Link> : <p className="font-medium">Será gerada na aprovação</p>}</div></div>
+            <div className="flex gap-3"><UserRound className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{quote.customer.name}</p></div></div>
+            <div className="flex gap-3"><ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{formatEquipmentName(quote.equipment)}</p></div></div>
             <div className="flex gap-3"><CalendarDays className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Validade</p><p className="font-medium">{formatDate(quote.validUntil)}</p></div></div>
           </CardContent></Card>
-          <Card><CardHeader><CardTitle className="text-base">Observações</CardTitle></CardHeader><CardContent><p className="text-sm whitespace-pre-wrap text-muted-foreground">{quote.notes ?? "Nenhuma observação."}</p></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-base">Atendimento</CardTitle></CardHeader><CardContent className="space-y-3"><div><p className="text-xs text-muted-foreground">Problema relatado</p><p className="text-sm whitespace-pre-wrap">{quote.reportedProblem}</p></div><div><p className="text-xs text-muted-foreground">Observações do orçamento</p><p className="text-sm whitespace-pre-wrap text-muted-foreground">{quote.notes ?? "Nenhuma observação."}</p></div></CardContent></Card>
         </div>
       </div>
     </div>

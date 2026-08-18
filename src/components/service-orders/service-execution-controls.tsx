@@ -1,11 +1,10 @@
 "use client";
 
-import { CircleCheck, LoaderCircle, PackageCheck, Pause, Play } from "lucide-react";
+import { LoaderCircle, PackageCheck, Pause, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import {
-  completeServiceAction,
   receivePartAction,
   startServiceAction,
   waitForPartAction,
@@ -40,7 +39,6 @@ export function ServiceExecutionControls({ serviceOrderId, status }: { serviceOr
         {status === "IN_PROGRESS" ? (
           <>
             <Button variant="outline" disabled={pending} onClick={() => run(waitForPartAction)}><Pause aria-hidden="true" />Aguardar peça</Button>
-            <Button disabled={pending} onClick={() => run(completeServiceAction)}><CircleCheck aria-hidden="true" />Concluir serviço</Button>
           </>
         ) : null}
         {pending ? <LoaderCircle className="size-5 animate-spin self-center" aria-hidden="true" /> : null}

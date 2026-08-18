@@ -37,11 +37,11 @@ export default async function ServiceOrdersPage({
           </p>
         </div>
         <Link
-          href="/ordens-de-servico/nova"
+          href="/orcamentos/novo"
           className={cn(buttonVariants({ size: "lg" }))}
         >
           <Plus aria-hidden="true" />
-          Nova ordem
+          Novo atendimento
         </Link>
       </header>
 

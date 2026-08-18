@@ -30,6 +30,8 @@ type CustomerFormProps = {
   mode: "create" | "edit";
   customerId?: string;
   defaultValues?: CustomerFormInput;
+  embedded?: boolean;
+  onCreated?: (customerId: string, values: CustomerFormInput) => void;
 };
 
 const emptyValues: CustomerFormInput = {
@@ -58,6 +60,8 @@ export function CustomerForm({
   mode,
   customerId,
   defaultValues = emptyValues,
+  embedded = false,
+  onCreated,
 }: CustomerFormProps) {
   const router = useRouter();
   const {
@@ -98,6 +102,10 @@ export function CustomerForm({
       return;
     }
 
+    if (embedded && result.customerId) {
+      onCreated?.(result.customerId, values);
+      return;
+    }
     router.push(`/clientes/${result.customerId}`);
     router.refresh();
   }
@@ -262,13 +270,15 @@ export function CustomerForm({
       </section>
 
       <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
-        <Link
-          href={returnHref}
-          className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
-        >
-          <ArrowLeft aria-hidden="true" />
-          Cancelar
-        </Link>
+        {!embedded ? (
+          <Link
+            href={returnHref}
+            className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+          >
+            <ArrowLeft aria-hidden="true" />
+            Cancelar
+          </Link>
+        ) : null}
         <Button type="submit" size="lg" disabled={isSubmitting}>
           {isSubmitting ? (
             <LoaderCircle className="animate-spin" aria-hidden="true" />

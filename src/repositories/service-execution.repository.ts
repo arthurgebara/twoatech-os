@@ -12,7 +12,7 @@ export const serviceExecutionRepository = {
   findOrder(transaction: ServiceExecutionTransaction, id: string) {
     return transaction.serviceOrder.findUnique({
       where: { id },
-      select: { id: true, number: true, status: true },
+      select: { id: true, number: true, status: true, serviceReport: { select: { id: true } } },
     });
   },
   updateStatus(

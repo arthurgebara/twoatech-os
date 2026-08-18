@@ -17,6 +17,10 @@ export function QuoteActions({ quoteId, status }: { quoteId: string; status: Quo
     startTransition(async () => {
       const result = await action({ quoteId, idempotencyKey: crypto.randomUUID() });
       setMessage(result.message);
+      if (result.success && result.serviceOrderId) {
+        router.push(`/ordens-de-servico/${result.serviceOrderId}`);
+        return;
+      }
       if (result.success) router.refresh();
     });
   }

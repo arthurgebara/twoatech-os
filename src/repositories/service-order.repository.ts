@@ -10,6 +10,7 @@ const serviceOrderListSelect = {
   status: true,
   reportedProblem: true,
   receivedAt: true,
+  deliveredAt: true,
   createdAt: true,
   customer: {
     select: {
@@ -35,6 +36,7 @@ const serviceOrderDetailSelect = {
   receivedAccessories: true,
   generalNotes: true,
   receivedAt: true,
+  deliveredAt: true,
   createdAt: true,
   updatedAt: true,
   customer: {

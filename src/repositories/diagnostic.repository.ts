@@ -70,6 +70,11 @@ export const diagnosticRepository = {
           select: { status: true },
           take: 1,
         },
+        quotes: {
+          where: { status: "APPROVED" },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
   },
@@ -126,6 +131,7 @@ export const diagnosticRepository = {
     transaction: DiagnosticTransaction,
     serviceOrderId: string,
     previousStatus: ServiceOrderStatus,
+    newStatus: "DIAGNOSING" | "APPROVED",
   ) {
     return transaction.serviceOrder.updateMany({
       where: {
@@ -133,7 +139,7 @@ export const diagnosticRepository = {
         status: previousStatus,
       },
       data: {
-        status: "DIAGNOSING",
+        status: newStatus,
       },
     });
   },

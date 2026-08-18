@@ -2,12 +2,17 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { entryChecklistItemDefinitions } from "@/schemas/entry-checklist.schema";
 
 const quoteDetailSelect = {
   id: true,
   number: true,
+  seriesId: true,
   version: true,
   status: true,
+  reportedProblem: true,
+  receivedAccessories: true,
+  generalNotes: true,
   subtotal: true,
   discount: true,
   total: true,
@@ -16,28 +21,15 @@ const quoteDetailSelect = {
   sentAt: true,
   approvedAt: true,
   rejectedAt: true,
+  sentIdempotencyKey: true,
+  decisionIdempotencyKey: true,
   createdAt: true,
-  serviceOrder: {
-    select: {
-      id: true,
-      number: true,
-      status: true,
-      customer: { select: { id: true, name: true, document: true, phone: true } },
-      equipment: { select: { id: true, type: true, brand: true, model: true, serialNumber: true } },
-    },
-  },
+  customer: { select: { id: true, name: true, document: true, phone: true, isActive: true } },
+  equipment: { select: { id: true, customerId: true, type: true, brand: true, model: true, serialNumber: true, isActive: true } },
+  serviceOrder: { select: { id: true, number: true, status: true } },
   createdBy: { select: { id: true, name: true } },
   items: {
-    select: {
-      id: true,
-      type: true,
-      description: true,
-      quantity: true,
-      unitPrice: true,
-      total: true,
-      position: true,
-      serviceCatalogItemId: true,
-    },
+    select: { id: true, type: true, description: true, quantity: true, unitPrice: true, total: true, position: true, serviceCatalogItemId: true },
     orderBy: { position: "asc" },
   },
 } satisfies Prisma.QuoteSelect;
@@ -50,13 +42,9 @@ const quoteListSelect = {
   total: true,
   validUntil: true,
   createdAt: true,
-  serviceOrder: {
-    select: {
-      id: true,
-      number: true,
-      customer: { select: { name: true } },
-    },
-  },
+  customer: { select: { id: true, name: true } },
+  equipment: { select: { id: true, type: true, brand: true, model: true } },
+  serviceOrder: { select: { id: true, number: true } },
 } satisfies Prisma.QuoteSelect;
 
 export type QuoteDetail = Prisma.QuoteGetPayload<{ select: typeof quoteDetailSelect }>;
@@ -69,10 +57,13 @@ function listWhere(search: string, status?: Prisma.EnumQuoteStatusFilter["equals
     const number = Number(search.replace(/\D/g, ""));
     filters.push({
       OR: [
-        { serviceOrder: { customer: { name: { contains: search, mode: "insensitive" } } } },
-        ...(Number.isSafeInteger(number) && number > 0
-          ? [{ number }, { serviceOrder: { number } }]
-          : []),
+        { customer: { name: { contains: search, mode: "insensitive" } } },
+        { equipment: { is: { OR: [
+          { brand: { contains: search, mode: "insensitive" } },
+          { model: { contains: search, mode: "insensitive" } },
+          { serialNumber: { contains: search, mode: "insensitive" } },
+        ] } } },
+        ...(Number.isSafeInteger(number) && number > 0 ? [{ number }, { serviceOrder: { is: { number } } }] : []),
       ],
     });
   }
@@ -87,84 +78,103 @@ export const quoteRepository = {
     return prisma.quote.count({ where: listWhere(search, status) });
   },
   list(search: string, status: Prisma.EnumQuoteStatusFilter["equals"] | undefined, skip: number, take: number) {
-    return prisma.quote.findMany({
-      where: listWhere(search, status),
-      select: quoteListSelect,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-    });
+    return prisma.quote.findMany({ where: listWhere(search, status), select: quoteListSelect, orderBy: { createdAt: "desc" }, skip, take });
   },
   findById(id: string) {
     return prisma.quote.findUnique({ where: { id }, select: quoteDetailSelect });
   },
   listForServiceOrder(serviceOrderId: string) {
-    return prisma.quote.findMany({
-      where: { serviceOrderId },
-      select: quoteListSelect,
-      orderBy: { version: "desc" },
-    });
+    return prisma.quote.findMany({ where: { serviceOrderId }, select: quoteListSelect, orderBy: { version: "desc" } });
   },
   findByIdInTransaction(transaction: QuoteTransaction, id: string) {
     return transaction.quote.findUnique({ where: { id }, select: quoteDetailSelect });
   },
-  findOrder(transaction: QuoteTransaction, id: string) {
-    return transaction.serviceOrder.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        number: true,
-        status: true,
-        diagnostic: { select: { id: true } },
-        checklists: {
-          where: { type: "ENTRY" },
-          select: { status: true },
-          take: 1,
-        },
-      },
+  findEquipment(transaction: QuoteTransaction, equipmentId: string) {
+    return transaction.equipment.findUnique({
+      where: { id: equipmentId },
+      select: { id: true, customerId: true, isActive: true, customer: { select: { id: true, isActive: true } } },
     });
   },
   findCatalogItems(transaction: QuoteTransaction, ids: string[]) {
-    return transaction.serviceCatalogItem.findMany({
-      where: { id: { in: ids }, isActive: true },
-      select: { id: true, name: true, defaultPrice: true },
-    });
+    return transaction.serviceCatalogItem.findMany({ where: { id: { in: ids }, isActive: true }, select: { id: true, name: true, defaultPrice: true } });
   },
-  nextVersion(transaction: QuoteTransaction, serviceOrderId: string) {
-    return transaction.quote.aggregate({
-      where: { serviceOrderId },
-      _max: { version: true },
-    });
+  nextVersion(transaction: QuoteTransaction, seriesId: string) {
+    return transaction.quote.aggregate({ where: { seriesId }, _max: { version: true } });
   },
-  findApproved(transaction: QuoteTransaction, serviceOrderId: string, exceptId?: string) {
-    return transaction.quote.findFirst({
-      where: { serviceOrderId, status: "APPROVED", ...(exceptId ? { id: { not: exceptId } } : {}) },
-      select: { id: true },
-    });
+  findApproved(transaction: QuoteTransaction, seriesId: string, exceptId?: string) {
+    return transaction.quote.findFirst({ where: { seriesId, status: "APPROVED", ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { id: true } });
   },
   create(transaction: QuoteTransaction, data: Prisma.QuoteCreateInput) {
     return transaction.quote.create({ data, select: quoteDetailSelect });
   },
-  updateStatus(
-    transaction: QuoteTransaction,
-    id: string,
-    expectedStatus: "DRAFT" | "SENT",
-    data: Prisma.QuoteUpdateManyMutationInput,
-  ) {
+  updateStatus(transaction: QuoteTransaction, id: string, expectedStatus: "DRAFT" | "SENT", data: Prisma.QuoteUpdateManyMutationInput) {
     return transaction.quote.updateMany({ where: { id, status: expectedStatus }, data });
+  },
+  createOrderForApprovedQuote(transaction: QuoteTransaction, quote: QuoteDetail, orderId: string, responsibleUserId: string, occurredAt: Date, idempotencyKey: string) {
+    return transaction.serviceOrder.create({
+      data: {
+        id: orderId,
+        customerId: quote.customer.id,
+        equipmentId: quote.equipment.id,
+        status: "OPEN",
+        reportedProblem: quote.reportedProblem,
+        receivedAccessories: quote.receivedAccessories,
+        generalNotes: quote.generalNotes,
+        createdById: responsibleUserId,
+        createdAt: occurredAt,
+        checklists: {
+          create: {
+            type: "ENTRY",
+            createdAt: occurredAt,
+            items: { create: entryChecklistItemDefinitions.map((item, position) => ({ ...item, position, createdAt: occurredAt })) },
+          },
+        },
+        timeline: {
+          create: [
+            {
+              type: "ORDEM_CRIADA",
+              title: "Ordem de serviço criada",
+              description: `Ordem gerada automaticamente após a aprovação do orçamento #${quote.number}.`,
+              responsibleUserId,
+              occurredAt,
+              createdAt: occurredAt,
+              metadata: { quoteId: quote.id, quoteNumber: quote.number, previousStatus: null, newStatus: "OPEN" },
+              idempotencyKey: `create-from-quote:${idempotencyKey}`,
+            },
+            {
+              type: "ORCAMENTO_APROVADO",
+              title: "Orçamento aprovado",
+              description: `Orçamento #${quote.number}, versão ${quote.version}.`,
+              responsibleUserId,
+              occurredAt,
+              createdAt: occurredAt,
+              metadata: { quoteId: quote.id, quoteNumber: quote.number, version: quote.version, previousStatus: null, newStatus: "OPEN" },
+              idempotencyKey: `quote-approved:${idempotencyKey}`,
+            },
+          ],
+        },
+      },
+      select: { id: true, number: true, status: true },
+    });
+  },
+  attachApprovedOrder(transaction: QuoteTransaction, quoteId: string, orderId: string, idempotencyKey: string, occurredAt: Date) {
+    return transaction.quote.updateMany({
+      where: { id: quoteId, status: "SENT", serviceOrderId: null },
+      data: { status: "APPROVED", serviceOrderId: orderId, approvedAt: occurredAt, decisionIdempotencyKey: idempotencyKey },
+    });
   },
   updateOrderStatus(
     transaction: QuoteTransaction,
     id: string,
-    previousStatuses: Prisma.ServiceOrderWhereInput["status"],
+    previousStatus: Prisma.ServiceOrderWhereInput["status"],
     status: "AWAITING_APPROVAL" | "APPROVED" | "QUOTE_REJECTED",
   ) {
-    return transaction.serviceOrder.updateMany({ where: { id, status: previousStatuses }, data: { status } });
+    return transaction.serviceOrder.updateMany({ where: { id, status: previousStatus }, data: { status } });
   },
   findTimelineEvent(transaction: QuoteTransaction, serviceOrderId: string, idempotencyKey: string) {
     return transaction.serviceOrderTimelineEvent.findUnique({
       where: { serviceOrderId_idempotencyKey: { serviceOrderId, idempotencyKey } },
-      select: { id: true, type: true, metadata: true },
+      select: { id: true, type: true },
     });
   },
   createTimelineEvent(transaction: QuoteTransaction, data: Prisma.ServiceOrderTimelineEventCreateManyInput) {

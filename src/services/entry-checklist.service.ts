@@ -145,10 +145,35 @@ export const entryChecklistService = {
         return saved;
       }
 
-      if (order.status !== "RECEIVED") {
+      if (!["OPEN", "RECEIVED"].includes(order.status)) {
         throw new EntryChecklistServiceError(
-          "Registre o recebimento do equipamento antes de concluir a checklist de entrada.",
+          "A checklist de entrada não pode ser concluída na situação atual da ordem.",
         );
+      }
+
+      if (order.status === "OPEN") {
+        const received = await entryChecklistRepository.markOrderReceived(
+          transaction,
+          order.id,
+          occurredAt,
+        );
+        if (received.count !== 1) {
+          throw new EntryChecklistServiceError("A situação da ordem mudou. Atualize a página.");
+        }
+        const receivedEvent = await entryChecklistRepository.createReceivedEvent(
+          transaction,
+          {
+            checklistId: checklist.id,
+            serviceOrderId: order.id,
+            responsibleUserId,
+            occurredAt,
+            idempotencyKey: parsed.idempotencyKey,
+            requestHash,
+          },
+        );
+        if (receivedEvent.count !== 1) {
+          throw new EntryChecklistServiceError("O recebimento já foi registrado.");
+        }
       }
 
       const completion = await entryChecklistRepository.markCompleted(

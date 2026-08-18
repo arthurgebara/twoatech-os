@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dashboardRepository = {
   async getOperationalSnapshot() {
-    const [distribution, recentOrders] = await prisma.$transaction([
+    const [distribution, recentOrders, awaitingApprovalQuotes] = await prisma.$transaction([
       prisma.serviceOrder.groupBy({
         by: ["status"],
         _count: { _all: true },
@@ -22,6 +22,7 @@ export const dashboardRepository = {
         orderBy: { createdAt: "desc" },
         take: 6,
       }),
+      prisma.quote.count({ where: { status: "SENT", serviceOrderId: null } }),
     ]);
     return {
       distribution: distribution.map((item) => ({
@@ -32,6 +33,7 @@ export const dashboardRepository = {
             : 0,
       })),
       recentOrders,
+      awaitingApprovalQuotes,
     };
   },
 };

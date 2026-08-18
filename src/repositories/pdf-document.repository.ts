@@ -43,6 +43,16 @@ const orderDocumentSelect = {
       registeredBy: { select: { name: true } },
     },
   },
+  serviceReport: {
+    select: {
+      workPerformed: true,
+      partsUsed: true,
+      testsPerformed: true,
+      notes: true,
+      registeredAt: true,
+      registeredBy: { select: { name: true } },
+    },
+  },
   checklists: {
     select: {
       id: true,
@@ -83,12 +93,12 @@ const quoteDocumentSelect = {
   validUntil: true,
   notes: true,
   createdAt: true,
+  customer: { select: { name: true, document: true, phone: true, email: true } },
+  equipment: { select: { type: true, brand: true, model: true, serialNumber: true } },
   serviceOrder: {
     select: {
       id: true,
       number: true,
-      customer: { select: { name: true, document: true, phone: true, email: true } },
-      equipment: { select: { type: true, brand: true, model: true, serialNumber: true } },
     },
   },
   items: {

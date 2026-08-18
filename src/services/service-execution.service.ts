@@ -63,6 +63,9 @@ export const serviceExecutionService = {
     return serviceExecutionRepository.transaction(async (transaction) => {
       const order = await serviceExecutionRepository.findOrder(transaction, parsed.serviceOrderId);
       if (!order) throw new ServiceExecutionError("Ordem de serviço não encontrada.");
+      if (command === "COMPLETE" && !order.serviceReport) {
+        throw new ServiceExecutionError("Registre o relatório do serviço para concluir a execução.");
+      }
       const existing = await serviceExecutionRepository.findEvent(transaction, order.id, eventKey);
       if (existing) {
         if (existing.type !== config.event) throw new ServiceExecutionError("Esta operação já foi usada com outra finalidade.");

@@ -4,11 +4,11 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft,
   CalendarClock,
+  CheckCircle2,
   ClipboardList,
-  FileText,
   Laptop,
+  LockKeyhole,
   Package,
-  Plus,
   Printer,
   Phone,
   StickyNote,
@@ -28,10 +28,10 @@ import { DiagnosticForm } from "@/components/service-orders/diagnostic-form";
 import { EntryChecklistForm } from "@/components/service-orders/entry-checklist-form";
 import { ExitChecklistForm } from "@/components/service-orders/exit-checklist-form";
 import { DeliveryControls } from "@/components/service-orders/delivery-controls";
-import { ReceiveEquipmentButton } from "@/components/service-orders/receive-equipment-button";
 import { formatServiceOrderNumber } from "@/components/service-orders/service-order-formatters";
 import { ServiceOrderObservationForm } from "@/components/service-orders/service-order-observation-form";
 import { ServiceExecutionControls } from "@/components/service-orders/service-execution-controls";
+import { ServiceReportForm } from "@/components/service-orders/service-report-form";
 import { ServiceOrderTimeline } from "@/components/service-orders/service-order-timeline";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -53,6 +53,7 @@ import { entryChecklistService } from "@/services/entry-checklist.service";
 import { exitChecklistService } from "@/services/exit-checklist.service";
 import { quoteService } from "@/services/quote.service";
 import { serviceOrderService } from "@/services/service-order.service";
+import { serviceReportService } from "@/services/service-report.service";
 
 export const metadata: Metadata = {
   title: "Detalhes da ordem de serviço",
@@ -80,6 +81,22 @@ function DetailItem({
   );
 }
 
+function WorkflowStep({ number, title, description, unlocked, completed, children }: { number: number; title: string; description: string; unlocked: boolean; completed: boolean; children: React.ReactNode }) {
+  return (
+    <Card className={cn("shadow-xs", !unlocked && "bg-muted/20 opacity-75")}>
+      <CardHeader className="border-b">
+        <div className="flex items-start gap-3">
+          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold", completed ? "border-primary bg-primary text-primary-foreground" : unlocked ? "border-primary text-primary" : "bg-muted text-muted-foreground")}>
+            {completed ? <CheckCircle2 className="size-4" aria-hidden="true" /> : unlocked ? number : <LockKeyhole className="size-4" aria-hidden="true" />}
+          </span>
+          <div><CardTitle>{title}</CardTitle><CardDescription className="mt-1">{unlocked ? description : "Conclua a etapa anterior para liberar."}</CardDescription></div>
+        </div>
+      </CardHeader>
+      {unlocked ? <CardContent>{children}</CardContent> : null}
+    </Card>
+  );
+}
+
 export default async function ServiceOrderDetailPage({
   params,
 }: {
@@ -93,19 +110,20 @@ export default async function ServiceOrderDetailPage({
     notFound();
   }
 
-  const [entryChecklist, exitChecklist, diagnostic, quotes] = await Promise.all([
+  const [entryChecklist, exitChecklist, diagnostic, serviceReport, quotes] = await Promise.all([
     entryChecklistService.getForServiceOrder(order.id),
     exitChecklistService.getForServiceOrder(order.id),
     diagnosticService.getForServiceOrder(order.id),
+    serviceReportService.getForServiceOrder(order.id),
     quoteService.listForServiceOrder(order.id),
   ]);
   const diagnosticEditable =
     entryChecklist?.status === "COMPLETED" &&
     ["RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status);
-  const quoteCreationAvailable =
-    entryChecklist?.status === "COMPLETED" &&
-    Boolean(diagnostic) &&
-    ["DIAGNOSING", "QUOTE_REJECTED"].includes(order.status);
+  const entryCompleted = entryChecklist?.status === "COMPLETED";
+  const diagnosticCompleted = Boolean(diagnostic) && !["RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status);
+  const serviceCompleted = Boolean(serviceReport) || ["COMPLETED", "READY_FOR_PICKUP", "DELIVERED"].includes(order.status);
+  const exitCompleted = exitChecklist?.status === "COMPLETED";
 
   return (
     <div className="space-y-6">
@@ -131,12 +149,6 @@ export default async function ServiceOrderDetailPage({
             {formatBrazilianDateTime(order.createdAt)}
           </p>
         </div>
-        {order.status === "OPEN" ? (
-          <ReceiveEquipmentButton
-            serviceOrderId={order.id}
-            idempotencyKey={randomUUID()}
-          />
-        ) : null}
         <div className="flex flex-wrap gap-2">
           <a
             href={`/api/pdfs/ordens-de-servico/${order.id}?timeline=1`}
@@ -169,8 +181,7 @@ export default async function ServiceOrderDetailPage({
         </div>
       </header>
 
-      <ServiceExecutionControls serviceOrderId={order.id} status={order.status} />
-      <DeliveryControls serviceOrderId={order.id} status={order.status} />
+      {!exitCompleted && !["DELIVERED", "CANCELED"].includes(order.status) ? <DeliveryControls serviceOrderId={order.id} status={order.status} cancelOnly /> : null}
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
@@ -277,94 +288,37 @@ export default async function ServiceOrderDetailPage({
         </Card>
       </div>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <Card className="self-start shadow-xs">
-          <CardHeader className="border-b">
-            <CardTitle>Checklist de entrada</CardTitle>
-            <CardDescription>
-              Conferência física do equipamento e dos acessórios recebidos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <EntryChecklistForm
-              serviceOrderId={order.id}
-              checklist={entryChecklist}
-              idempotencyKey={randomUUID()}
-              canComplete={order.status === "RECEIVED"}
-            />
-          </CardContent>
-        </Card>
+      <section className="space-y-4" aria-labelledby="workflow-title">
+        <div>
+          <h2 id="workflow-title" className="text-xl font-semibold">Fluxo do atendimento</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Cada etapa é liberada quando a anterior é concluída.</p>
+        </div>
 
-        <Card className="self-start shadow-xs">
-          <CardHeader className="border-b">
-            <CardTitle>Diagnóstico</CardTitle>
-            <CardDescription>
-              Registro técnico atual da ordem de serviço.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DiagnosticForm
-              serviceOrderId={order.id}
-              diagnostic={diagnostic}
-              idempotencyKey={randomUUID()}
-              editable={diagnosticEditable}
-            />
-          </CardContent>
-        </Card>
+        <WorkflowStep number={1} title="Checklist de entrada" description="Confira o estado físico e confirme o recebimento do equipamento." unlocked completed={entryCompleted}>
+          <EntryChecklistForm serviceOrderId={order.id} checklist={entryChecklist} idempotencyKey={randomUUID()} canComplete={["OPEN", "RECEIVED"].includes(order.status)} />
+        </WorkflowStep>
+
+        <WorkflowStep number={2} title="Diagnóstico" description="Documente o problema encontrado e a conclusão técnica." unlocked={entryCompleted} completed={diagnosticCompleted}>
+          <DiagnosticForm serviceOrderId={order.id} diagnostic={diagnostic} idempotencyKey={randomUUID()} editable={diagnosticEditable} />
+        </WorkflowStep>
+
+        <WorkflowStep number={3} title="Execução e relatório do serviço" description="Inicie a execução, registre o trabalho realizado e conclua a etapa técnica." unlocked={Boolean(diagnostic)} completed={serviceCompleted}>
+          <div className="space-y-4">
+            <ServiceExecutionControls serviceOrderId={order.id} status={order.status} />
+            <ServiceReportForm serviceOrderId={order.id} report={serviceReport} idempotencyKey={randomUUID()} editable={order.status === "IN_PROGRESS" && !serviceReport} />
+          </div>
+        </WorkflowStep>
+
+        <WorkflowStep number={4} title="Checklist de saída" description="Faça os testes finais, limpeza, montagem e conferência de acessórios." unlocked={serviceCompleted} completed={exitCompleted}>
+          <ExitChecklistForm serviceOrderId={order.id} checklist={exitChecklist} idempotencyKey={randomUUID()} />
+        </WorkflowStep>
+
+        <WorkflowStep number={5} title="Pronto e entrega" description="Libere o equipamento e registre a retirada pelo cliente." unlocked={exitCompleted} completed={order.status === "DELIVERED"}>
+          {order.status === "DELIVERED" ? <p className="rounded-lg border bg-muted/20 p-3 text-sm">Equipamento entregue em {order.deliveredAt ? formatBrazilianDateTime(order.deliveredAt) : "data não informada"}.</p> : <DeliveryControls serviceOrderId={order.id} status={order.status} />}
+        </WorkflowStep>
       </section>
 
-      <Card className="shadow-xs">
-        <CardHeader className="border-b">
-          <CardTitle>Checklist de saída</CardTitle>
-          <CardDescription>Testes finais, montagem, limpeza e acessórios antes da entrega.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ExitChecklistForm
-            serviceOrderId={order.id}
-            checklist={exitChecklist}
-            idempotencyKey={randomUUID()}
-          />
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-xs">
-        <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Orçamentos</CardTitle>
-            <CardDescription>Versões e situação comercial desta ordem.</CardDescription>
-          </div>
-          {quoteCreationAvailable ? (
-            <Link
-              href={`/ordens-de-servico/${order.id}/orcamentos/novo` as Route}
-              className={cn(buttonVariants({ size: "sm" }))}
-            >
-              <Plus aria-hidden="true" /> Novo orçamento
-            </Link>
-          ) : null}
-        </CardHeader>
-        <CardContent className="px-0">
-          {quotes.length === 0 ? (
-            <div className="flex min-h-36 flex-col items-center justify-center text-center">
-              <FileText className="mb-2 size-6 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm font-medium">Nenhum orçamento criado</p>
-              <p className="text-xs text-muted-foreground">O diagnóstico pode seguir sem orçamento até esta etapa.</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {quotes.map((quote) => (
-                <Link key={quote.id} href={`/orcamentos/${quote.id}` as Route} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-                  <div>
-                    <p className="text-sm font-medium">Orçamento #{quote.number} · versão {quote.version}</p>
-                    <p className="text-xs text-muted-foreground">{formatBrazilianDateTime(quote.createdAt)}</p>
-                  </div>
-                  <Badge variant="secondary">{quoteStatusLabels[quote.status]}</Badge>
-                  <p className="text-sm font-semibold">{formatBrazilianCurrency(quote.total.toString())}</p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {quotes.length > 0 ? <Card className="shadow-xs"><CardHeader className="border-b"><CardTitle>Orçamento de origem</CardTitle><CardDescription>Proposta comercial que deu origem a esta ordem.</CardDescription></CardHeader><CardContent className="px-0"><div className="divide-y">{quotes.map((quote) => <Link key={quote.id} href={`/orcamentos/${quote.id}` as Route} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><p className="text-sm font-medium">Orçamento #{quote.number} · versão {quote.version}</p><p className="text-xs text-muted-foreground">{formatBrazilianDateTime(quote.createdAt)}</p></div><Badge variant="secondary">{quoteStatusLabels[quote.status]}</Badge><p className="text-sm font-semibold">{formatBrazilianCurrency(quote.total.toString())}</p></Link>)}</div></CardContent></Card> : null}
     </div>
   );
 }

@@ -34,7 +34,7 @@ export type QuotePdfDto = {
   number: number;
   version: number;
   status: QuoteStatus;
-  serviceOrderNumber: number;
+  serviceOrderNumber: number | null;
   createdAt: Date;
   validUntil: Date | null;
   customer: CustomerPdfDto;
@@ -61,6 +61,14 @@ export type ServiceOrderPdfDto = {
     description: string;
     technicalConclusion: string | null;
     recommendations: string | null;
+    registeredAt: Date;
+    registeredBy: string;
+  } | null;
+  serviceReport: {
+    workPerformed: string;
+    partsUsed: string | null;
+    testsPerformed: string | null;
+    notes: string | null;
     registeredAt: Date;
     registeredBy: string;
   } | null;

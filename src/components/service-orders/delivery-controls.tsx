@@ -19,7 +19,7 @@ import { cancelServiceOrderSchema, type CancelServiceOrderInput } from "@/schema
 
 type CommandAction = (input: { serviceOrderId: string; idempotencyKey: string }) => Promise<DeliveryActionResult>;
 
-export function DeliveryControls({ serviceOrderId, status }: { serviceOrderId: string; status: ServiceOrderStatus }) {
+export function DeliveryControls({ serviceOrderId, status, cancelOnly = false }: { serviceOrderId: string; status: ServiceOrderStatus; cancelOnly?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [showCancel, setShowCancel] = useState(false);
@@ -49,8 +49,8 @@ export function DeliveryControls({ serviceOrderId, status }: { serviceOrderId: s
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap gap-2">
-        {status === "COMPLETED" ? <Button disabled={pending} onClick={() => run(markEquipmentReadyAction)}><PackageCheck aria-hidden="true" />Marcar equipamento pronto</Button> : null}
-        {status === "READY_FOR_PICKUP" ? <Button disabled={pending} onClick={() => run(deliverEquipmentAction)}><CheckCheck aria-hidden="true" />Registrar entrega</Button> : null}
+        {!cancelOnly && status === "COMPLETED" ? <Button disabled={pending} onClick={() => run(markEquipmentReadyAction)}><PackageCheck aria-hidden="true" />Marcar equipamento pronto</Button> : null}
+        {!cancelOnly && status === "READY_FOR_PICKUP" ? <Button disabled={pending} onClick={() => run(deliverEquipmentAction)}><CheckCheck aria-hidden="true" />Registrar entrega</Button> : null}
         <Button variant="outline" disabled={pending} onClick={() => setShowCancel((value) => !value)}><Ban aria-hidden="true" />Cancelar ordem</Button>
         {pending ? <LoaderCircle className="size-5 animate-spin self-center" aria-hidden="true" /> : null}
       </div>

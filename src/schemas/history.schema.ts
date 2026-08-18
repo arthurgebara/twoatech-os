@@ -31,6 +31,7 @@ export const timelineEventTypeLabels: Record<ServiceOrderTimelineEventType, stri
   SERVICO_INICIADO: "Serviço iniciado",
   AGUARDANDO_PECA: "Aguardando peça",
   PECA_RECEBIDA: "Peça recebida",
+  RELATORIO_SERVICO_REGISTRADO: "Relatório do serviço registrado",
   SERVICO_CONCLUIDO: "Serviço concluído",
   CHECKLIST_SAIDA_CONCLUIDO: "Checklist de saída concluída",
   EQUIPAMENTO_PRONTO: "Equipamento pronto",
