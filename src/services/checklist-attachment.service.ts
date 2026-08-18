@@ -99,7 +99,9 @@ export const checklistAttachmentService = {
   },
 
   async createViewUrl(id: string) {
-    const attachment = await checklistAttachmentRepository.findAccessible(id);
+    const parsed = finalizeChecklistAttachmentUploadSchema.shape.attachmentId.safeParse(id);
+    if (!parsed.success) return null;
+    const attachment = await checklistAttachmentRepository.findAccessible(parsed.data);
     if (!attachment) return null;
     const { data, error } = await supabaseStorage().from(attachment.bucket).createSignedUrl(attachment.objectPath, 60);
     return error ? null : data.signedUrl;
