@@ -90,6 +90,7 @@ model User {
   registeredServiceReports ServiceReport[]           @relation("ServiceReportRegisteredBy")
   createdQuotes         Quote[]                      @relation("QuoteCreatedBy")
   timelineEvents        ServiceOrderTimelineEvent[] @relation("TimelineResponsibleUser")
+  uploadedChecklistAttachments ChecklistAttachment[] @relation("ChecklistAttachmentUploadedBy")
 
   @@map("users")
 }
@@ -159,6 +160,7 @@ model ServiceOrder {
   serviceReport       ServiceReport?
   quotes              Quote[]
   timeline            ServiceOrderTimelineEvent[]
+  checklistAttachments ChecklistAttachment[]
 
   @@index([status, createdAt])
   @@index([customerId])
@@ -200,6 +202,26 @@ model ChecklistItem {
   @@unique([checklistId, key])
   @@index([checklistId, position])
   @@map("checklist_items")
+}
+
+model ChecklistAttachment {
+  id                String        @id @default(uuid()) @db.Uuid
+  serviceOrderId    String        @db.Uuid
+  checklistType     ChecklistType
+  bucket            String        @db.VarChar(100)
+  objectPath        String        @unique @db.VarChar(500)
+  originalName      String        @db.VarChar(255)
+  mimeType          String        @db.VarChar(100)
+  size              Int
+  uploadedById      String        @db.Uuid
+  uploadedAt        DateTime?     @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  serviceOrder      ServiceOrder  @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  uploadedBy        User          @relation("ChecklistAttachmentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([serviceOrderId, checklistType, uploadedAt])
+  @@index([uploadedById])
+  @@map("checklist_attachments")
 }
 
 model Diagnostic {

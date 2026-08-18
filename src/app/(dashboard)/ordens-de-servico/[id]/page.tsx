@@ -25,6 +25,7 @@ import {
 } from "@/components/customers/customer-formatters";
 import { formatEquipmentName } from "@/components/equipment/equipment-formatters";
 import { DiagnosticForm } from "@/components/service-orders/diagnostic-form";
+import { ChecklistAttachments } from "@/components/service-orders/checklist-attachments";
 import { EntryChecklistForm } from "@/components/service-orders/entry-checklist-form";
 import { ExitChecklistForm } from "@/components/service-orders/exit-checklist-form";
 import { DeliveryControls } from "@/components/service-orders/delivery-controls";
@@ -49,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { quoteStatusLabels } from "@/schemas/quote.schema";
 import { serviceOrderStatusLabels } from "@/schemas/service-order.schema";
 import { diagnosticService } from "@/services/diagnostic.service";
+import { checklistAttachmentService } from "@/services/checklist-attachment.service";
 import { entryChecklistService } from "@/services/entry-checklist.service";
 import { exitChecklistService } from "@/services/exit-checklist.service";
 import { quoteService } from "@/services/quote.service";
@@ -110,12 +112,14 @@ export default async function ServiceOrderDetailPage({
     notFound();
   }
 
-  const [entryChecklist, exitChecklist, diagnostic, serviceReport, quotes] = await Promise.all([
+  const [entryChecklist, exitChecklist, diagnostic, serviceReport, quotes, entryAttachments, exitAttachments] = await Promise.all([
     entryChecklistService.getForServiceOrder(order.id),
     exitChecklistService.getForServiceOrder(order.id),
     diagnosticService.getForServiceOrder(order.id),
     serviceReportService.getForServiceOrder(order.id),
     quoteService.listForServiceOrder(order.id),
+    checklistAttachmentService.list(order.id, "ENTRY"),
+    checklistAttachmentService.list(order.id, "EXIT"),
   ]);
   const diagnosticEditable =
     entryChecklist?.status === "COMPLETED" &&
@@ -295,7 +299,10 @@ export default async function ServiceOrderDetailPage({
         </div>
 
         <WorkflowStep number={1} title="Checklist de entrada" description="Confira o estado físico e confirme o recebimento do equipamento." unlocked completed={entryCompleted}>
-          <EntryChecklistForm serviceOrderId={order.id} checklist={entryChecklist} idempotencyKey={randomUUID()} canComplete={["OPEN", "RECEIVED"].includes(order.status)} />
+          <div className="space-y-5">
+            <EntryChecklistForm serviceOrderId={order.id} checklist={entryChecklist} idempotencyKey={randomUUID()} canComplete={["OPEN", "RECEIVED"].includes(order.status)} />
+            <ChecklistAttachments serviceOrderId={order.id} checklistType="ENTRY" attachments={entryAttachments} editable={!entryCompleted && ["OPEN", "RECEIVED"].includes(order.status)} />
+          </div>
         </WorkflowStep>
 
         <WorkflowStep number={2} title="Diagnóstico" description="Documente o problema encontrado e a conclusão técnica." unlocked={entryCompleted} completed={diagnosticCompleted}>
@@ -310,7 +317,10 @@ export default async function ServiceOrderDetailPage({
         </WorkflowStep>
 
         <WorkflowStep number={4} title="Checklist de saída" description="Faça os testes finais, limpeza, montagem e conferência de acessórios." unlocked={serviceCompleted} completed={exitCompleted}>
-          <ExitChecklistForm serviceOrderId={order.id} checklist={exitChecklist} idempotencyKey={randomUUID()} />
+          <div className="space-y-5">
+            <ExitChecklistForm serviceOrderId={order.id} checklist={exitChecklist} idempotencyKey={randomUUID()} />
+            <ChecklistAttachments serviceOrderId={order.id} checklistType="EXIT" attachments={exitAttachments} editable={!exitCompleted && order.status === "COMPLETED"} />
+          </div>
         </WorkflowStep>
 
         <WorkflowStep number={5} title="Pronto e entrega" description="Libere o equipamento e registre a retirada pelo cliente." unlocked={exitCompleted} completed={order.status === "DELIVERED"}>
