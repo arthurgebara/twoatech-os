@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, ClipboardList, Printer, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardList, Printer, RefreshCw, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -39,6 +39,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         <div className="space-y-3">
           <QuoteActions quoteId={quote.id} status={quote.status} />
           <div className="flex flex-wrap gap-2">
+            {quote.status === "REJECTED" ? <Link href={`/orcamentos/novo?revisao=${quote.id}`} className={cn(buttonVariants({ size: "sm" }))}><RefreshCw aria-hidden="true" /> Criar nova versão</Link> : null}
             <ShareQuotePdfButton
               customerName={quote.customer.name}
               quoteId={quote.id}

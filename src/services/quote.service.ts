@@ -119,21 +119,34 @@ export const quoteService = {
         }
         return existing;
       }
+      const sourceQuote = parsed.revisionOfQuoteId
+        ? await quoteRepository.findByIdInTransaction(transaction, parsed.revisionOfQuoteId)
+        : null;
+      if (parsed.revisionOfQuoteId && !sourceQuote) throw new QuoteServiceError("O orçamento original não foi encontrado.");
+      if (sourceQuote && sourceQuote.status !== "REJECTED") throw new QuoteServiceError("Somente um orçamento rejeitado pode receber uma nova versão.");
+      if (sourceQuote && (sourceQuote.customer.id !== parsed.customerId || sourceQuote.equipment.id !== parsed.equipmentId)) {
+        throw new QuoteServiceError("Cliente e equipamento não podem ser alterados entre versões do orçamento.");
+      }
       await validateEquipment(transaction, parsed.customerId, parsed.equipmentId);
       const items = await calculateItems(transaction, parsed);
       const subtotal = items.reduce((sum, item) => sum.add(item.total), new Prisma.Decimal(0));
       const discount = new Prisma.Decimal(parseBrlValue(parsed.discount) ?? "0");
       if (discount.greaterThan(subtotal)) throw new QuoteServiceError("O desconto não pode superar o subtotal.");
       const occurredAt = new Date();
+      const seriesId = sourceQuote?.seriesId ?? parsed.idempotencyKey;
+      const version = sourceQuote
+        ? ((await quoteRepository.nextVersion(transaction, seriesId))._max.version ?? 0) + 1
+        : 1;
       return quoteRepository.create(transaction, {
         id: parsed.idempotencyKey,
-        seriesId: parsed.idempotencyKey,
+        seriesId,
         customer: { connect: { id: parsed.customerId } },
         equipment: { connect: { id: parsed.equipmentId } },
         reportedProblem: parsed.reportedProblem,
         receivedAccessories: nullable(parsed.receivedAccessories),
         generalNotes: nullable(parsed.generalNotes),
-        version: 1,
+        ...(sourceQuote?.serviceOrder ? { serviceOrder: { connect: { id: sourceQuote.serviceOrder.id } } } : {}),
+        version,
         subtotal,
         discount,
         total: subtotal.sub(discount),

@@ -25,6 +25,7 @@ import { parseBrlValue } from "@/schemas/service-catalog.schema";
 import { createQuoteSchema, quoteItemTypeLabels, type CreateQuoteInput } from "@/schemas/quote.schema";
 
 type CatalogOption = { id: string; name: string; description: string | null; defaultPrice: string };
+type QuoteInitialValues = Omit<CreateQuoteInput, "idempotencyKey">;
 
 const textareaClassName = "w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30";
 
@@ -33,11 +34,13 @@ export function QuoteForm({
   catalog,
   customers: initialCustomers,
   equipment: initialEquipment,
+  initialValues,
 }: {
   idempotencyKey: string;
   catalog: CatalogOption[];
   customers: CustomerOption[];
   equipment: EquipmentOption[];
+  initialValues?: QuoteInitialValues;
 }) {
   const router = useRouter();
   const [customers, setCustomers] = useState(initialCustomers);
@@ -47,16 +50,17 @@ export function QuoteForm({
   const { control, register, handleSubmit, setError, setValue, formState: { errors, isSubmitting } } = useForm<CreateQuoteInput>({
     resolver: zodResolver(createQuoteSchema),
     defaultValues: {
-      customerId: "",
-      equipmentId: "",
+      customerId: initialValues?.customerId ?? "",
+      equipmentId: initialValues?.equipmentId ?? "",
       idempotencyKey,
-      reportedProblem: "",
-      receivedAccessories: "",
-      generalNotes: "",
-      validUntil: "",
-      notes: "",
-      discount: "R$ 0,00",
-      items: [{ type: "SERVICE", serviceCatalogItemId: "", description: "", quantity: "1", unitPrice: "R$ 0,00" }],
+      revisionOfQuoteId: initialValues?.revisionOfQuoteId,
+      reportedProblem: initialValues?.reportedProblem ?? "",
+      receivedAccessories: initialValues?.receivedAccessories ?? "",
+      generalNotes: initialValues?.generalNotes ?? "",
+      validUntil: initialValues?.validUntil ?? "",
+      notes: initialValues?.notes ?? "",
+      discount: initialValues?.discount ?? "R$ 0,00",
+      items: initialValues?.items ?? [{ type: "SERVICE", serviceCatalogItemId: "", description: "", quantity: "1", unitPrice: "R$ 0,00" }],
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -105,6 +109,7 @@ export function QuoteForm({
   return (
     <>
       <form onSubmit={handleSubmit(submit)} className="space-y-7" noValidate>
+        <input type="hidden" {...register("revisionOfQuoteId")} />
         {errors.root?.message ? <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errors.root.message}</p> : null}
 
         <section className="space-y-4">
