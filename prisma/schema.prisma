@@ -54,6 +54,12 @@ enum QuoteItemType {
   OTHER
 }
 
+enum QuoteRequestStatus {
+  NEW
+  CONTACTED
+  DISMISSED
+}
+
 enum ServiceOrderTimelineEventType {
   ORDEM_CRIADA
   EQUIPAMENTO_RECEBIDO
@@ -82,6 +88,7 @@ model User {
   passwordHash          String                      @db.VarChar(255)
   image                 String?                     @db.VarChar(500)
   isActive              Boolean                     @default(true)
+  hasCompletedQuickstart Boolean                    @default(false)
   createdAt             DateTime                    @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                    @updatedAt @db.Timestamptz(3)
   createdServiceOrders  ServiceOrder[]              @relation("ServiceOrderCreatedBy")
@@ -114,6 +121,24 @@ model Customer {
   @@index([name])
   @@index([phone])
   @@map("customers")
+}
+
+model QuoteRequest {
+  id                   String             @id @default(uuid()) @db.Uuid
+  name                 String             @db.VarChar(160)
+  phone                String             @db.VarChar(20)
+  email                String?            @db.VarChar(255)
+  equipmentType        EquipmentType
+  equipmentDescription String?            @db.VarChar(240)
+  reportedProblem      String             @db.Text
+  status               QuoteRequestStatus @default(NEW)
+  contactedAt          DateTime?          @db.Timestamptz(3)
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([phone])
+  @@map("quote_requests")
 }
 
 model Equipment {

@@ -7,8 +7,9 @@ export async function proxy(request: NextRequest) {
     secret: process.env.AUTH_SECRET,
   });
   const isLoginPage = request.nextUrl.pathname === "/login";
+  const isPublicPage = request.nextUrl.pathname === "/";
 
-  if (!token && !isLoginPage) {
+  if (!token && !isLoginPage && !isPublicPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

@@ -26,6 +26,7 @@ export const requireUser = cache(async () => {
       name: true,
       email: true,
       image: true,
+      hasCompletedQuickstart: true,
     },
   });
 

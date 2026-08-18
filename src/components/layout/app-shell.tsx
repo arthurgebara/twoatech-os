@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { Brand } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { QuickstartGuide } from "@/components/layout/quickstart-guide";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,6 +30,7 @@ type AppShellProps = {
     name: string;
     email: string;
     image: string | null;
+    hasCompletedQuickstart: boolean;
   };
 };
 
@@ -135,6 +137,7 @@ export function AppShell({ children, user }: AppShellProps) {
 
   return (
     <div className="min-h-dvh bg-muted/20">
+      <QuickstartGuide show={!user.hasCompletedQuickstart} />
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
         <SidebarContent pathname={pathname} user={user}>
           {children}
