@@ -63,7 +63,7 @@ export default async function DashboardPage() {
               <div className="flex min-h-72 flex-col items-center justify-center text-center"><FileCheck2 className="mb-3 size-8 text-muted-foreground" aria-hidden="true" /><p className="font-medium">Nenhuma ordem cadastrada</p><p className="text-sm text-muted-foreground">A primeira ordem surgirá quando um orçamento for aprovado.</p></div>
             ) : (
               <div className="divide-y">{data.recentOrders.map((order) => (
-                <Link key={order.id} href={`/ordens-de-servico/${order.id}` as Route} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
+                <Link key={order.id} href={`/ordens-de-servico/${order.id}` as Route} className="grid gap-2 px-4 py-4 transition-all duration-200 hover:bg-muted/30 hover:pl-5 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
                   <div><p className="font-medium">{formatServiceOrderNumber(order.number)}</p><p className="text-xs text-muted-foreground">{formatBrazilianDateTime(order.createdAt)}</p></div>
                   <div><p className="text-sm">{order.customer.name}</p><p className="text-xs text-muted-foreground">{formatEquipmentName(order.equipment)}</p></div>
                   <Badge variant="secondary">{serviceOrderStatusLabels[order.status]}</Badge>
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
               {data.distribution.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Sem dados para exibir.</p> : data.distribution.map((item) => (
                 <div key={item.status}>
                   <div className="mb-1.5 flex justify-between gap-3 text-xs"><span>{serviceOrderStatusLabels[item.status]}</span><span className="font-medium">{item.count}</span></div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(5, (item.count / maxStatusCount) * 100)}%` }} /></div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="motion-progress h-full rounded-full bg-primary" style={{ width: `${Math.max(5, (item.count / maxStatusCount) * 100)}%` }} /></div>
                 </div>
               ))}
             </CardContent>

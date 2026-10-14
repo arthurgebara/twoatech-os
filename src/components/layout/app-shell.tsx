@@ -58,14 +58,14 @@ function Navigation({ pathname }: { pathname: string }) {
             href={item.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "group flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              "group flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/65 transition-all duration-200 hover:translate-x-0.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               isActive &&
                 "bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-sm ring-1 ring-sidebar-primary/30",
             )}
           >
             <Icon
               className={cn(
-                "size-4 text-sidebar-foreground/45 transition-colors group-hover:text-sidebar-accent-foreground",
+                "size-4 text-sidebar-foreground/45 transition-all duration-200 group-hover:scale-110 group-hover:text-sidebar-accent-foreground",
                 isActive && "text-sidebar-primary-foreground",
               )}
               aria-hidden="true"
@@ -189,7 +189,9 @@ export function AppShell({ children, user }: AppShellProps) {
         </header>
 
         <main className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8">
-          {children}
+          <div key={pathname} className="page-transition">
+            {children}
+          </div>
         </main>
       </div>
     </div>
