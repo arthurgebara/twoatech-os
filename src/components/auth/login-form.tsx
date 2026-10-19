@@ -2,9 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
-import { signIn } from "next-auth/react";
+import { getCsrfToken } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ export function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string>();
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [csrfToken, setCsrfToken] = useState<string>();
   const {
     register,
     handleSubmit,
@@ -25,27 +27,63 @@ export function LoginForm() {
     defaultValues: { email: "", password: "" },
   });
 
+  useEffect(() => {
+    let ignore = false;
+
+    void getCsrfToken().then((token) => {
+      if (!ignore) {
+        setCsrfToken(token);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   async function onSubmit(data: LoginInput) {
     setFormError(undefined);
 
     try {
-      const result = await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-      });
+      const preparedCsrfToken = csrfToken ?? (await getCsrfToken());
 
-      if (!result?.ok) {
+      if (!preparedCsrfToken) {
+        throw new Error("Não foi possível preparar a autenticação.");
+      }
+
+      setCsrfToken(preparedCsrfToken);
+
+      const response = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          csrfToken: preparedCsrfToken,
+          callbackUrl: `${window.location.origin}/dashboard`,
+          json: "true",
+          email: data.email,
+          password: data.password,
+        }),
+      });
+      const result = (await response.json()) as { url?: string };
+      const authError = result.url
+        ? new URL(result.url, window.location.origin).searchParams.get("error")
+        : "CredentialsSignin";
+
+      if (!response.ok || authError) {
+        void getCsrfToken().then(setCsrfToken);
         setFormError("E-mail ou senha incorretos. Tente novamente.");
         return;
       }
 
+      setIsNavigating(true);
       router.replace("/dashboard");
-      router.refresh();
     } catch {
+      setCsrfToken(undefined);
       setFormError("Não foi possível entrar agora. Tente novamente em instantes.");
     }
   }
+
+  const isPending = isSubmitting || isNavigating;
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -64,6 +102,7 @@ export function LoginForm() {
             placeholder="voce@twoatech.com.br"
             className="h-11 pl-10"
             aria-invalid={Boolean(errors.email)}
+            disabled={isNavigating}
             {...register("email")}
           />
         </div>
@@ -86,12 +125,14 @@ export function LoginForm() {
             placeholder="Digite sua senha"
             className="h-11 pr-11 pl-10"
             aria-invalid={Boolean(errors.password)}
+            disabled={isNavigating}
             {...register("password")}
           />
           <button
             type="button"
-            className="absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
             aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            disabled={isNavigating}
             onClick={() => setShowPassword((visible) => !visible)}
           >
             {showPassword ? (
@@ -115,11 +156,15 @@ export function LoginForm() {
         </div>
       )}
 
-      <Button className="h-11 w-full" type="submit" disabled={isSubmitting}>
-        {isSubmitting && (
+      <Button className="h-11 w-full" type="submit" disabled={isPending}>
+        {isPending && (
           <LoaderCircle className="animate-spin" aria-hidden="true" />
         )}
-        {isSubmitting ? "Entrando..." : "Entrar no sistema"}
+        {isNavigating
+          ? "Abrindo painel..."
+          : isSubmitting
+            ? "Entrando..."
+            : "Entrar no sistema"}
       </Button>
     </form>
   );

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dashboardRepository = {
   async getOperationalSnapshot() {
-    const [distribution, recentOrders, awaitingApprovalQuotes] = await prisma.$transaction([
+    const [distribution, recentOrders, awaitingApprovalQuotes] = await Promise.all([
       prisma.serviceOrder.groupBy({
         by: ["status"],
         _count: { _all: true },

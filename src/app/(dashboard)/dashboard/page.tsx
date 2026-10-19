@@ -24,8 +24,10 @@ import { dashboardService } from "@/services/dashboard.service";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  await requireUser();
-  const data = await dashboardService.getOperationalData();
+  const [, data] = await Promise.all([
+    requireUser(),
+    dashboardService.getOperationalData(),
+  ]);
   const metrics = [
     { label: "Ordens abertas", value: data.metrics.open, icon: Wrench, helper: "Em alguma etapa operacional" },
     { label: "Aguardando aprovação", value: data.metrics.awaitingApproval, icon: Clock3, helper: "Orçamentos enviados" },
