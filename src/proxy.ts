@@ -22,6 +22,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|icon|manifest.webmanifest|twoatech-logo.png).*)",
+    "/((?!api/auth|_next/static|_next/image|icon|manifest.webmanifest|apple-touch-icon.png|pwa-icon-192.png|pwa-icon-512.png|twoatech-logo.png).*)",
   ],
 };
