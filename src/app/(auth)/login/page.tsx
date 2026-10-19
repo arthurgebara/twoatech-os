@@ -25,7 +25,7 @@ const highlights = [
 
 export default function LoginPage() {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-background">
+    <main className="safe-page-top relative min-h-dvh overflow-hidden bg-background">
       <div className="motion-float absolute inset-0 scale-105 bg-[radial-gradient(circle_at_15%_20%,color-mix(in_oklch,var(--brand-lime)_18%,transparent),transparent_30%),radial-gradient(circle_at_85%_80%,color-mix(in_oklch,var(--brand-navy)_12%,transparent),transparent_30%)] dark:bg-[radial-gradient(circle_at_15%_20%,color-mix(in_oklch,var(--brand-lime)_10%,transparent),transparent_30%),radial-gradient(circle_at_85%_80%,color-mix(in_oklch,var(--brand-lime)_5%,transparent),transparent_30%)]" />
       <div className="relative mx-auto grid min-h-dvh max-w-7xl lg:grid-cols-[1.08fr_0.92fr]">
         <section className="hidden border-r border-border/70 p-12 lg:flex lg:flex-col lg:justify-between xl:p-16">

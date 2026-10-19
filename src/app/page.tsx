@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Assistência técnica", description:
 
 export default function HomePage() {
   return (
-    <main className="min-h-dvh bg-background">
+    <main className="safe-page-top min-h-dvh bg-background">
       <header className="border-b bg-background/90"><div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6"><Brand /><Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>Acesso interno</Link></div></header>
       <section className="relative overflow-hidden"><div className="motion-float absolute inset-0 scale-105 bg-[radial-gradient(circle_at_15%_15%,color-mix(in_oklch,var(--brand-lime)_20%,transparent),transparent_30%),radial-gradient(circle_at_90%_70%,color-mix(in_oklch,var(--brand-navy)_14%,transparent),transparent_35%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-20 lg:grid-cols-[1fr_0.9fr] lg:items-center">

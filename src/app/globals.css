@@ -127,6 +127,8 @@
   }
   body {
     @apply bg-background text-foreground selection:bg-brand-lime selection:text-brand-navy;
+    min-width: 320px;
+    overscroll-behavior-y: none;
     text-rendering: optimizeLegibility;
   }
   html {
@@ -205,6 +207,58 @@
 
   .motion-float {
     animation: soft-float 8s ease-in-out infinite;
+  }
+
+  .safe-page-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .app-header {
+    height: calc(3.5rem + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .app-main {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-bottom-nav {
+    padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(0.4rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+  }
+
+  .safe-sheet {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-modal-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select:not([multiple]) {
+    min-height: 44px;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-header {
+    height: 3.5rem;
+    padding-top: 0;
+  }
+
+  .app-main {
+    padding-bottom: 2rem;
   }
 }
 
