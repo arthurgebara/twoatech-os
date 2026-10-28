@@ -26,10 +26,7 @@ export const quoteItemSchema = z.object({
   if (item.serviceCatalogItemId && !uuidSchema.safeParse(item.serviceCatalogItemId).success) {
     context.addIssue({ code: "custom", path: ["serviceCatalogItemId"], message: "Serviço do catálogo inválido." });
   }
-  if (item.serviceCatalogItemId && item.type !== "SERVICE") {
-    context.addIssue({ code: "custom", path: ["type"], message: "Itens do catálogo devem ser do tipo serviço." });
-  }
-  if (!item.serviceCatalogItemId && item.description.length < 2) {
+  if ((item.type !== "SERVICE" || !item.serviceCatalogItemId) && item.description.length < 2) {
     context.addIssue({ code: "custom", path: ["description"], message: "Informe a descrição do item." });
   }
 });

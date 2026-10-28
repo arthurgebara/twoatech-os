@@ -39,12 +39,12 @@ async function validateEquipment(transaction: QuoteTransaction, customerId: stri
 }
 
 async function calculateItems(transaction: QuoteTransaction, input: CreateQuoteInput) {
-  const catalogIds = [...new Set(input.items.map((item) => item.serviceCatalogItemId).filter(Boolean))];
+  const catalogIds = [...new Set(input.items.filter((item) => item.type === "SERVICE").map((item) => item.serviceCatalogItemId).filter(Boolean))];
   const catalogItems = await quoteRepository.findCatalogItems(transaction, catalogIds);
   if (catalogItems.length !== catalogIds.length) throw new QuoteServiceError("Um serviço do catálogo não existe ou está inativo.");
   const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
   return input.items.map((item, position) => {
-    const catalog = item.serviceCatalogItemId ? catalogById.get(item.serviceCatalogItemId) : undefined;
+    const catalog = item.type === "SERVICE" && item.serviceCatalogItemId ? catalogById.get(item.serviceCatalogItemId) : undefined;
     const unitPrice = new Prisma.Decimal(catalog ? catalog.defaultPrice : (parseBrlValue(item.unitPrice) ?? "0"));
     const quantity = new Prisma.Decimal(parseQuoteQuantity(item.quantity));
     return {
