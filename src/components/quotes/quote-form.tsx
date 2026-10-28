@@ -121,7 +121,7 @@ export function QuoteForm({
   return (
     <>
       <form onSubmit={handleSubmit(submit, invalid)} className="space-y-7" noValidate>
-        <input type="hidden" {...register("revisionOfQuoteId")} />
+        {initialValues?.revisionOfQuoteId ? <input type="hidden" {...register("revisionOfQuoteId")} /> : null}
         {errors.root?.message ? <p role="alert" aria-live="polite" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errors.root.message}</p> : null}
 
         <section className="space-y-4">
