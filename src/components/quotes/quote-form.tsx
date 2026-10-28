@@ -5,7 +5,7 @@ import { LoaderCircle, Plus, Save, Trash2, UserPlus, LaptopMinimal } from "lucid
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Controller, type FieldPath, type SubmitErrorHandler, useFieldArray, useForm, useWatch } from "react-hook-form";
 
 import { createQuoteAction } from "@/actions/quote.actions";
 import { CustomerForm } from "@/components/customers/customer-form";
@@ -75,14 +75,26 @@ export function QuoteForm({
   const discount = Number(parseBrlValue(watchedDiscount) ?? 0);
 
   async function submit(input: CreateQuoteInput) {
-    const result = await createQuoteAction(input);
-    if (!result.success) {
-      setError("root", { message: result.message });
-      return;
+    try {
+      const result = await createQuoteAction(input);
+      if (!result.success) {
+        for (const [field, messages] of Object.entries(result.fieldErrors ?? {})) {
+          const message = messages[0];
+          if (message) setError(field as FieldPath<CreateQuoteInput>, { message });
+        }
+        setError("root", { message: result.message });
+        return;
+      }
+      router.push(`/orcamentos/${result.quoteId}` as Route);
+      router.refresh();
+    } catch {
+      setError("root", { message: "Não foi possível criar o orçamento. Verifique sua conexão e tente novamente." });
     }
-    router.push(`/orcamentos/${result.quoteId}` as Route);
-    router.refresh();
   }
+
+  const invalid: SubmitErrorHandler<CreateQuoteInput> = () => {
+    setError("root", { message: "Não foi possível criar o orçamento. Revise os campos destacados." });
+  };
 
   function customerCreated(customerId: string, values: CustomerFormInput) {
     setCustomers((current) => [...current, { id: customerId, name: values.name.trim(), document: values.document.replace(/\D/g, "") || null, isActive: true }]);
@@ -108,9 +120,9 @@ export function QuoteForm({
 
   return (
     <>
-      <form onSubmit={handleSubmit(submit)} className="space-y-7" noValidate>
+      <form onSubmit={handleSubmit(submit, invalid)} className="space-y-7" noValidate>
         <input type="hidden" {...register("revisionOfQuoteId")} />
-        {errors.root?.message ? <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errors.root.message}</p> : null}
+        {errors.root?.message ? <p role="alert" aria-live="polite" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errors.root.message}</p> : null}
 
         <section className="space-y-4">
           <div><h2 className="font-medium">1. Cliente e equipamento</h2><p className="text-xs text-muted-foreground">Selecione um cadastro existente ou crie sem sair do orçamento.</p></div>
@@ -138,8 +150,8 @@ export function QuoteForm({
           <div><h2 className="font-medium">2. Dados do atendimento</h2><p className="text-xs text-muted-foreground">Essas informações acompanharão a ordem criada após a aprovação.</p></div>
           <div className="space-y-2"><Label htmlFor="reported-problem">Problema ou necessidade relatada</Label><textarea id="reported-problem" rows={4} className={textareaClassName} placeholder="Descreva o que o cliente precisa ou o defeito informado" {...register("reportedProblem")} />{errors.reportedProblem?.message ? <p className="text-xs text-destructive">{errors.reportedProblem.message}</p> : null}</div>
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2"><Label htmlFor="received-accessories">Acessórios previstos</Label><textarea id="received-accessories" rows={3} className={textareaClassName} placeholder="Carregador, fonte, cabo..." {...register("receivedAccessories")} /></div>
-            <div className="space-y-2"><Label htmlFor="general-notes">Observações internas</Label><textarea id="general-notes" rows={3} className={textareaClassName} {...register("generalNotes")} /></div>
+            <div className="space-y-2"><Label htmlFor="received-accessories">Acessórios previstos</Label><textarea id="received-accessories" rows={3} className={textareaClassName} placeholder="Carregador, fonte, cabo..." aria-invalid={Boolean(errors.receivedAccessories)} {...register("receivedAccessories")} />{errors.receivedAccessories?.message ? <p className="text-xs text-destructive">{errors.receivedAccessories.message}</p> : null}</div>
+            <div className="space-y-2"><Label htmlFor="general-notes">Observações internas</Label><textarea id="general-notes" rows={3} className={textareaClassName} aria-invalid={Boolean(errors.generalNotes)} {...register("generalNotes")} />{errors.generalNotes?.message ? <p className="text-xs text-destructive">{errors.generalNotes.message}</p> : null}</div>
           </div>
         </section>
 
@@ -147,17 +159,17 @@ export function QuoteForm({
           <div className="flex items-center justify-between gap-3"><div><h2 className="font-medium">3. Itens do orçamento</h2><p className="text-xs text-muted-foreground">Valores do catálogo são copiados como snapshot.</p></div><Button type="button" variant="outline" size="sm" onClick={() => append({ type: "SERVICE", serviceCatalogItemId: "", description: "", quantity: "1", unitPrice: "R$ 0,00" })}><Plus aria-hidden="true" /> Adicionar</Button></div>
           {fields.map((field, index) => (
             <div key={field.id} className="grid gap-3 rounded-xl border bg-muted/20 p-4 lg:grid-cols-[130px_1fr_110px_160px_auto]">
-              <div className="space-y-2"><Label htmlFor={`item-type-${index}`}>Tipo</Label><select id={`item-type-${index}`} className="h-9 w-full rounded-md border bg-background px-3 text-sm" {...register(`items.${index}.type`)}>{Object.entries(quoteItemTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-              <div className="space-y-2"><Label htmlFor={`item-description-${index}`}>Descrição</Label>{watchedItems[index]?.type === "SERVICE" && catalog.length ? <select className="mb-2 h-9 w-full rounded-md border bg-background px-3 text-sm" aria-label="Selecionar do catálogo" {...register(`items.${index}.serviceCatalogItemId`, { onChange: (event) => { const selected = catalog.find((item) => item.id === event.target.value); if (selected) { setValue(`items.${index}.description`, selected.name); setValue(`items.${index}.unitPrice`, decimalToBrlInput(selected.defaultPrice)); } } })}><option value="">Item personalizado</option>{catalog.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select> : null}<Input id={`item-description-${index}`} placeholder="Descrição do item" {...register(`items.${index}.description`)} />{errors.items?.[index]?.description?.message ? <p className="text-xs text-destructive">{errors.items[index]?.description?.message}</p> : null}</div>
-              <div className="space-y-2"><Label htmlFor={`item-quantity-${index}`}>Quantidade</Label><Input id={`item-quantity-${index}`} inputMode="decimal" {...register(`items.${index}.quantity`)} /></div>
-              <div className="space-y-2"><Label htmlFor={`item-price-${index}`}>Valor unitário</Label><Controller name={`items.${index}.unitPrice`} control={control} render={({ field: priceField }) => <Input {...priceField} id={`item-price-${index}`} inputMode="numeric" onChange={(event) => priceField.onChange(maskBrlInput(event.target.value))} />} /></div>
+              <div className="space-y-2"><Label htmlFor={`item-type-${index}`}>Tipo</Label><select id={`item-type-${index}`} className="h-9 w-full rounded-md border bg-background px-3 text-sm" aria-invalid={Boolean(errors.items?.[index]?.type)} {...register(`items.${index}.type`)}>{Object.entries(quoteItemTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{errors.items?.[index]?.type?.message ? <p className="text-xs text-destructive">{errors.items[index]?.type?.message}</p> : null}</div>
+              <div className="space-y-2"><Label htmlFor={`item-description-${index}`}>Descrição</Label>{watchedItems[index]?.type === "SERVICE" && catalog.length ? <><select className="mb-2 h-9 w-full rounded-md border bg-background px-3 text-sm" aria-label="Selecionar do catálogo" aria-invalid={Boolean(errors.items?.[index]?.serviceCatalogItemId)} {...register(`items.${index}.serviceCatalogItemId`, { onChange: (event) => { const selected = catalog.find((item) => item.id === event.target.value); if (selected) { setValue(`items.${index}.description`, selected.name); setValue(`items.${index}.unitPrice`, decimalToBrlInput(selected.defaultPrice)); } } })}><option value="">Item personalizado</option>{catalog.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{errors.items?.[index]?.serviceCatalogItemId?.message ? <p className="mb-2 text-xs text-destructive">{errors.items[index]?.serviceCatalogItemId?.message}</p> : null}</> : null}<Input id={`item-description-${index}`} placeholder="Descrição do item" aria-invalid={Boolean(errors.items?.[index]?.description)} {...register(`items.${index}.description`)} />{errors.items?.[index]?.description?.message ? <p className="text-xs text-destructive">{errors.items[index]?.description?.message}</p> : null}</div>
+              <div className="space-y-2"><Label htmlFor={`item-quantity-${index}`}>Quantidade</Label><Input id={`item-quantity-${index}`} inputMode="decimal" aria-invalid={Boolean(errors.items?.[index]?.quantity)} {...register(`items.${index}.quantity`)} />{errors.items?.[index]?.quantity?.message ? <p className="text-xs text-destructive">{errors.items[index]?.quantity?.message}</p> : null}</div>
+              <div className="space-y-2"><Label htmlFor={`item-price-${index}`}>Valor unitário</Label><Controller name={`items.${index}.unitPrice`} control={control} render={({ field: priceField }) => <Input {...priceField} id={`item-price-${index}`} inputMode="numeric" aria-invalid={Boolean(errors.items?.[index]?.unitPrice)} onChange={(event) => priceField.onChange(maskBrlInput(event.target.value))} />} />{errors.items?.[index]?.unitPrice?.message ? <p className="text-xs text-destructive">{errors.items[index]?.unitPrice?.message}</p> : null}</div>
               <Button type="button" variant="ghost" size="icon" className="self-end" disabled={fields.length === 1} onClick={() => remove(index)} aria-label="Remover item"><Trash2 aria-hidden="true" /></Button>
             </div>
           ))}
         </section>
 
-        <div className="grid gap-4 border-t pt-6 md:grid-cols-2"><div className="space-y-2"><Label htmlFor="valid-until">Validade</Label><Input id="valid-until" type="date" {...register("validUntil")} /></div><div className="space-y-2"><Label htmlFor="discount">Desconto</Label><Controller name="discount" control={control} render={({ field }) => <Input {...field} id="discount" inputMode="numeric" onChange={(event) => field.onChange(maskBrlInput(event.target.value))} />} /></div></div>
-        <div className="space-y-2"><Label htmlFor="quote-notes">Observações para o cliente</Label><textarea id="quote-notes" rows={4} className={textareaClassName} {...register("notes")} /></div>
+        <div className="grid gap-4 border-t pt-6 md:grid-cols-2"><div className="space-y-2"><Label htmlFor="valid-until">Validade</Label><Input id="valid-until" type="date" aria-invalid={Boolean(errors.validUntil)} {...register("validUntil")} />{errors.validUntil?.message ? <p className="text-xs text-destructive">{errors.validUntil.message}</p> : null}</div><div className="space-y-2"><Label htmlFor="discount">Desconto</Label><Controller name="discount" control={control} render={({ field }) => <Input {...field} id="discount" inputMode="numeric" aria-invalid={Boolean(errors.discount)} onChange={(event) => field.onChange(maskBrlInput(event.target.value))} />} />{errors.discount?.message ? <p className="text-xs text-destructive">{errors.discount.message}</p> : null}</div></div>
+        <div className="space-y-2"><Label htmlFor="quote-notes">Observações para o cliente</Label><textarea id="quote-notes" rows={4} className={textareaClassName} aria-invalid={Boolean(errors.notes)} {...register("notes")} />{errors.notes?.message ? <p className="text-xs text-destructive">{errors.notes.message}</p> : null}</div>
         <div className="flex flex-col gap-4 rounded-xl border bg-muted/20 p-4 sm:flex-row sm:items-end sm:justify-between"><div className="grid grid-cols-3 gap-6 text-sm"><div><p className="text-muted-foreground">Subtotal</p><p className="font-medium">{formatBrazilianCurrency(subtotal)}</p></div><div><p className="text-muted-foreground">Desconto</p><p className="font-medium">{formatBrazilianCurrency(discount)}</p></div><div><p className="text-muted-foreground">Total</p><p className="font-semibold">{formatBrazilianCurrency(Math.max(0, subtotal - discount))}</p></div></div><Button type="submit" disabled={isSubmitting}>{isSubmitting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{isSubmitting ? "Criando..." : "Criar orçamento"}</Button></div>
         <p className="text-xs text-muted-foreground">A ordem de serviço será criada somente quando este orçamento for aprovado.</p>
       </form>
