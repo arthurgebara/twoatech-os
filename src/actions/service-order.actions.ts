@@ -84,7 +84,7 @@ export async function createServiceOrderAction(
 
     return {
       success: true,
-      message: "Ordem de serviço criada com sucesso.",
+      message: "Atendimento criado com sucesso.",
       serviceOrderId: order.id,
     };
   } catch (error) {

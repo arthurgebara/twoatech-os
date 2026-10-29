@@ -7,6 +7,8 @@ import { entryChecklistItemDefinitions } from "@/schemas/entry-checklist.schema"
 const serviceOrderListSelect = {
   id: true,
   number: true,
+  isIntake: true,
+  convertedAt: true,
   status: true,
   reportedProblem: true,
   receivedAt: true,
@@ -31,6 +33,8 @@ const serviceOrderListSelect = {
 const serviceOrderDetailSelect = {
   id: true,
   number: true,
+  isIntake: true,
+  convertedAt: true,
   status: true,
   reportedProblem: true,
   receivedAccessories: true,
@@ -87,6 +91,8 @@ const serviceOrderDetailSelect = {
 const mutationServiceOrderSelect = {
   id: true,
   number: true,
+  isIntake: true,
+  convertedAt: true,
   customerId: true,
   equipmentId: true,
   status: true,
@@ -230,6 +236,7 @@ export const serviceOrderRepository = {
     return transaction.serviceOrder.create({
       data: {
         id: input.id,
+        isIntake: true,
         customerId: input.customerId,
         equipmentId: input.equipmentId,
         reportedProblem: input.reportedProblem,
@@ -253,8 +260,8 @@ export const serviceOrderRepository = {
         },
         timeline: {
           create: {
-            type: "ORDEM_CRIADA",
-            title: "Ordem de serviço criada",
+            type: "ATENDIMENTO_CRIADO",
+            title: "Atendimento criado",
             description: "Atendimento aberto e aguardando o recebimento.",
             responsibleUserId: input.createdById,
             occurredAt: input.occurredAt,

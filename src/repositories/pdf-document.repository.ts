@@ -7,6 +7,7 @@ const orderDocumentSelect = {
   id: true,
   number: true,
   status: true,
+  isIntake: true,
   reportedProblem: true,
   receivedAccessories: true,
   generalNotes: true,
@@ -87,6 +88,8 @@ const quoteDocumentSelect = {
   number: true,
   version: true,
   status: true,
+  kind: true,
+  evidence: { select: { attachment: { select: { bucket: true, objectPath: true, originalName: true } } }, orderBy: { position: "asc" } },
   subtotal: true,
   discount: true,
   total: true,
@@ -99,6 +102,7 @@ const quoteDocumentSelect = {
     select: {
       id: true,
       number: true,
+      isIntake: true,
     },
   },
   items: {

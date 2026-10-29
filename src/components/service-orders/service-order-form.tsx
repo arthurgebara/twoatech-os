@@ -1,10 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, LoaderCircle, Save } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Save, UserPlus, LaptopMinimal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import {
@@ -13,6 +13,11 @@ import {
 } from "@/actions/service-order.actions";
 import { formatCpfCnpj } from "@/components/customers/customer-formatters";
 import { formatEquipmentName } from "@/components/equipment/equipment-formatters";
+import { CustomerForm } from "@/components/customers/customer-form";
+import { EquipmentForm } from "@/components/equipment/equipment-form";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { CustomerFormInput } from "@/schemas/customer.schema";
+import type { EquipmentFormInput } from "@/schemas/equipment.schema";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -28,6 +33,7 @@ type ServiceOrderFormProps = {
   customerOptions: CustomerOption[];
   equipmentOptions: EquipmentOption[];
   idempotencyKey: string;
+  initialValues?: Omit<CreateServiceOrderInput, "idempotencyKey">;
 };
 
 const fieldClassName =
@@ -45,11 +51,16 @@ function FieldError({ message }: { message?: string }) {
 }
 
 export function ServiceOrderForm({
-  customerOptions,
-  equipmentOptions,
+  customerOptions: initialCustomers,
+  equipmentOptions: initialEquipment,
   idempotencyKey,
+  initialValues,
 }: ServiceOrderFormProps) {
   const router = useRouter();
+  const [customerOptions, setCustomers] = useState(initialCustomers);
+  const [equipmentOptions, setEquipment] = useState(initialEquipment);
+  const [customerSheetOpen, setCustomerSheetOpen] = useState(false);
+  const [equipmentSheetOpen, setEquipmentSheetOpen] = useState(false);
   const {
     control,
     handleSubmit,
@@ -65,6 +76,7 @@ export function ServiceOrderForm({
       reportedProblem: "",
       receivedAccessories: "",
       generalNotes: "",
+      ...initialValues,
       idempotencyKey,
     },
   });
@@ -111,7 +123,30 @@ export function ServiceOrderForm({
     router.refresh();
   }
 
+  function customerCreated(customerId: string, values: CustomerFormInput) {
+    setCustomers((current) => [...current, { id: customerId, name: values.name.trim(), document: values.document.replace(/\D/g, "") || null, isActive: true }]);
+    setValue("customerId", customerId, { shouldValidate: true });
+    setValue("equipmentId", "");
+    setCustomerSheetOpen(false);
+  }
+
+  function equipmentCreated(equipmentId: string, values: EquipmentFormInput) {
+    setEquipment((current) => [...current, {
+      id: equipmentId,
+      customerId: values.customerId,
+      type: values.type,
+      brand: values.brand.trim() || null,
+      model: values.model.trim() || null,
+      serialNumber: values.serialNumber.trim() || null,
+      isActive: true,
+      customer: { isActive: true },
+    }]);
+    setValue("equipmentId", equipmentId, { shouldValidate: true });
+    setEquipmentSheetOpen(false);
+  }
+
   return (
+    <>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       <input type="hidden" {...register("idempotencyKey")} />
 
@@ -135,7 +170,7 @@ export function ServiceOrderForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="customerId">Cliente</Label>
+            <div className="flex items-center justify-between"><Label htmlFor="customerId">Cliente</Label><Button type="button" variant="ghost" size="sm" onClick={() => setCustomerSheetOpen(true)}><UserPlus aria-hidden="true" /> Novo</Button></div>
             <select
               id="customerId"
               className={fieldClassName}
@@ -153,7 +188,7 @@ export function ServiceOrderForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="equipmentId">Equipamento</Label>
+            <div className="flex items-center justify-between"><Label htmlFor="equipmentId">Equipamento</Label><Button type="button" variant="ghost" size="sm" disabled={!selectedCustomerId} onClick={() => setEquipmentSheetOpen(true)}><LaptopMinimal aria-hidden="true" /> Novo</Button></div>
             <select
               id="equipmentId"
               className={fieldClassName}
@@ -255,9 +290,12 @@ export function ServiceOrderForm({
           ) : (
             <Save aria-hidden="true" />
           )}
-          {isSubmitting ? "Criando ordem..." : "Criar ordem de serviço"}
+          {isSubmitting ? "Criando atendimento..." : "Criar atendimento"}
         </Button>
       </div>
     </form>
+      <Sheet open={customerSheetOpen} onOpenChange={setCustomerSheetOpen}><SheetContent className="w-full overflow-y-auto sm:max-w-xl"><SheetHeader><SheetTitle>Novo cliente</SheetTitle><SheetDescription>Cadastre sem perder os dados da entrada.</SheetDescription></SheetHeader><div className="p-4 pt-0"><CustomerForm mode="create" embedded onCreated={customerCreated} /></div></SheetContent></Sheet>
+      <Sheet open={equipmentSheetOpen} onOpenChange={setEquipmentSheetOpen}><SheetContent className="w-full overflow-y-auto sm:max-w-xl"><SheetHeader><SheetTitle>Novo equipamento</SheetTitle><SheetDescription>O equipamento será vinculado ao cliente selecionado.</SheetDescription></SheetHeader><div className="p-4 pt-0"><EquipmentForm mode="create" embedded customerOptions={customerOptions} defaultValues={{ customerId: selectedCustomerId, type: "NOTEBOOK", brand: "", model: "", serialNumber: "", color: "", specifications: "", notes: "" }} onCreated={equipmentCreated} /></div></SheetContent></Sheet>
+    </>
   );
 }

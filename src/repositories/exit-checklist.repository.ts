@@ -54,15 +54,15 @@ export const exitChecklistRepository = {
   },
   async saveItems(transaction: ExitChecklistTransaction, checklistId: string, input: SaveExitChecklistInput) {
     const definitions = new Map(exitChecklistItemDefinitions.map((item, position) => [item.key, { ...item, position }]));
-    await Promise.all(input.items.map((item) => {
+    for (const item of input.items) {
       const definition = definitions.get(item.key);
       if (!definition) throw new Error("Definição de checklist não encontrada.");
-      return transaction.checklistItem.upsert({
+      await transaction.checklistItem.upsert({
         where: { checklistId_key: { checklistId, key: item.key } },
         create: { checklistId, ...definition, checked: item.checked, notes: item.notes || null },
         update: { checked: item.checked, notes: item.notes || null },
       });
-    }));
+    }
     return transaction.serviceOrderChecklist.update({ where: { id: checklistId }, data: { notes: input.notes || null }, select });
   },
   markCompleted(transaction: ExitChecklistTransaction, checklistId: string, responsibleUserId: string, occurredAt: Date) {

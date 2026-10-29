@@ -125,7 +125,9 @@ export default async function ServiceOrderDetailPage({
     entryChecklist?.status === "COMPLETED" &&
     ["RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status);
   const entryCompleted = entryChecklist?.status === "COMPLETED";
-  const diagnosticCompleted = Boolean(diagnostic) && !["RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status);
+  const diagnosticCompleted = Boolean(diagnostic);
+  const quoteApproved = !order.isIntake && quotes.some((quote) => quote.status === "APPROVED");
+  const canCreateQuote = Boolean(diagnostic) && ["DIAGNOSING", "QUOTE_REJECTED"].includes(order.status) && !quotes.some((quote) => ["DRAFT", "SENT", "APPROVED"].includes(quote.status));
   const serviceCompleted = Boolean(serviceReport) || ["COMPLETED", "READY_FOR_PICKUP", "DELIVERED"].includes(order.status);
   const exitCompleted = exitChecklist?.status === "COMPLETED";
 
@@ -142,7 +144,7 @@ export default async function ServiceOrderDetailPage({
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {formatServiceOrderNumber(order.number)}
+              {formatServiceOrderNumber(order.number, order.isIntake)}
             </h1>
             <Badge variant={order.status === "OPEN" ? "outline" : "secondary"}>
               {serviceOrderStatusLabels[order.status]}
@@ -160,7 +162,7 @@ export default async function ServiceOrderDetailPage({
             rel="noreferrer"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
-            <Printer aria-hidden="true" /> PDF da ordem
+            <Printer aria-hidden="true" /> {order.isIntake ? "PDF do atendimento" : "PDF da OS"}
           </a>
           {entryChecklist ? (
             <a
@@ -261,7 +263,7 @@ export default async function ServiceOrderDetailPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
-              <DetailItem icon={CalendarClock} label="Ordem criada">
+              <DetailItem icon={CalendarClock} label="Atendimento aberto">
                 {formatBrazilianDateTime(order.createdAt)}
               </DetailItem>
               <DetailItem icon={CalendarClock} label="Equipamento recebido">
@@ -277,7 +279,7 @@ export default async function ServiceOrderDetailPage({
           <CardHeader className="border-b">
             <CardTitle>Timeline</CardTitle>
             <CardDescription>
-              Histórico imutável e auditável da ordem.
+              Histórico completo desde a abertura do atendimento.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -301,34 +303,44 @@ export default async function ServiceOrderDetailPage({
         <WorkflowStep number={1} title="Checklist de entrada" description="Confira o estado físico e confirme o recebimento do equipamento." unlocked completed={entryCompleted}>
           <div className="space-y-5">
             <EntryChecklistForm serviceOrderId={order.id} checklist={entryChecklist} idempotencyKey={randomUUID()} canComplete={["OPEN", "RECEIVED"].includes(order.status)} />
-            <ChecklistAttachments serviceOrderId={order.id} checklistType="ENTRY" attachments={entryAttachments} editable={!entryCompleted && ["OPEN", "RECEIVED"].includes(order.status)} />
+            <ChecklistAttachments serviceOrderId={order.id} checklistType="ENTRY" attachments={entryAttachments} editable={["OPEN", "RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status)} />
           </div>
         </WorkflowStep>
 
         <WorkflowStep number={2} title="Diagnóstico" description="Documente o problema encontrado e a conclusão técnica." unlocked={entryCompleted} completed={diagnosticCompleted}>
-          <DiagnosticForm serviceOrderId={order.id} diagnostic={diagnostic} idempotencyKey={randomUUID()} editable={diagnosticEditable} />
+          <div className="space-y-5"><DiagnosticForm serviceOrderId={order.id} diagnostic={diagnostic} idempotencyKey={randomUUID()} editable={diagnosticEditable} />
+            <p className="text-xs text-muted-foreground">Adicione as evidências do diagnóstico em Fotos e documentos na etapa de entrada, antes de criar o orçamento.</p></div>
         </WorkflowStep>
 
-        <WorkflowStep number={3} title="Execução e relatório do serviço" description="Inicie a execução, registre o trabalho realizado e conclua a etapa técnica." unlocked={Boolean(diagnostic)} completed={serviceCompleted}>
+        <WorkflowStep number={3} title="Orçamento e aprovação" description="Emita o orçamento definitivo e registre a decisão do cliente. A aprovação converte o atendimento em OS." unlocked={Boolean(diagnostic)} completed={quoteApproved}>
+          <div className="space-y-3">
+            {canCreateQuote ? <Link href={`/orcamentos/novo?atendimento=${order.id}`} className={cn(buttonVariants({ size: "sm" }))}>Criar orçamento definitivo</Link> : null}
+            {quotes.map((quote) => <Link key={quote.id} href={`/orcamentos/${quote.id}`} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"><span>Orçamento #{quote.number} · v{quote.version}</span><Badge variant="secondary">{quoteStatusLabels[quote.status]}</Badge></Link>)}
+            {!quotes.length && !canCreateQuote ? <p className="text-sm text-muted-foreground">Conclua o diagnóstico para emitir o orçamento.</p> : null}
+            {quoteApproved ? <p className="text-sm">Serviço autorizado. A execução está liberada.</p> : null}
+          </div>
+        </WorkflowStep>
+
+        <WorkflowStep number={4} title="Execução e relatório do serviço" description="Inicie a execução, registre o trabalho realizado e conclua a etapa técnica." unlocked={Boolean(diagnostic) && quoteApproved} completed={serviceCompleted}>
           <div className="space-y-4">
             <ServiceExecutionControls serviceOrderId={order.id} status={order.status} />
             <ServiceReportForm serviceOrderId={order.id} report={serviceReport} idempotencyKey={randomUUID()} editable={order.status === "IN_PROGRESS" && !serviceReport} />
           </div>
         </WorkflowStep>
 
-        <WorkflowStep number={4} title="Checklist de saída" description="Faça os testes finais, limpeza, montagem e conferência de acessórios." unlocked={serviceCompleted} completed={exitCompleted}>
+        <WorkflowStep number={5} title="Checklist de saída" description="Faça os testes finais, limpeza, montagem e conferência de acessórios." unlocked={serviceCompleted} completed={exitCompleted}>
           <div className="space-y-5">
             <ExitChecklistForm serviceOrderId={order.id} checklist={exitChecklist} idempotencyKey={randomUUID()} />
             <ChecklistAttachments serviceOrderId={order.id} checklistType="EXIT" attachments={exitAttachments} editable={!exitCompleted && order.status === "COMPLETED"} />
           </div>
         </WorkflowStep>
 
-        <WorkflowStep number={5} title="Pronto e entrega" description="Libere o equipamento e registre a retirada pelo cliente." unlocked={exitCompleted} completed={order.status === "DELIVERED"}>
+        <WorkflowStep number={6} title="Pronto e entrega" description="Libere o equipamento e registre a retirada pelo cliente." unlocked={exitCompleted} completed={order.status === "DELIVERED"}>
           {order.status === "DELIVERED" ? <p className="rounded-lg border bg-muted/20 p-3 text-sm">Equipamento entregue em {order.deliveredAt ? formatBrazilianDateTime(order.deliveredAt) : "data não informada"}.</p> : <DeliveryControls serviceOrderId={order.id} status={order.status} />}
         </WorkflowStep>
       </section>
 
-      {quotes.length > 0 ? <Card className="shadow-xs"><CardHeader className="border-b"><CardTitle>Orçamento de origem</CardTitle><CardDescription>Proposta comercial que deu origem a esta ordem.</CardDescription></CardHeader><CardContent className="px-0"><div className="divide-y">{quotes.map((quote) => <Link key={quote.id} href={`/orcamentos/${quote.id}` as Route} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><p className="text-sm font-medium">Orçamento #{quote.number} · versão {quote.version}</p><p className="text-xs text-muted-foreground">{formatBrazilianDateTime(quote.createdAt)}</p></div><Badge variant="secondary">{quoteStatusLabels[quote.status]}</Badge><p className="text-sm font-semibold">{formatBrazilianCurrency(quote.total.toString())}</p></Link>)}</div></CardContent></Card> : null}
+      {quotes.length > 0 ? <Card className="shadow-xs"><CardHeader className="border-b"><CardTitle>Orçamentos do atendimento</CardTitle><CardDescription>Propostas e revisões preservadas neste atendimento.</CardDescription></CardHeader><CardContent className="px-0"><div className="divide-y">{quotes.map((quote) => <Link key={quote.id} href={`/orcamentos/${quote.id}` as Route} className="grid gap-2 px-4 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><p className="text-sm font-medium">Orçamento #{quote.number} · versão {quote.version}</p><p className="text-xs text-muted-foreground">{formatBrazilianDateTime(quote.createdAt)}</p></div><Badge variant="secondary">{quoteStatusLabels[quote.status]}</Badge><p className="text-sm font-semibold">{formatBrazilianCurrency(quote.total.toString())}</p></Link>)}</div></CardContent></Card> : null}
     </div>
   );
 }

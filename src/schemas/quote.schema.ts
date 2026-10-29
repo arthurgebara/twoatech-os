@@ -34,6 +34,8 @@ export const quoteItemSchema = z.object({
 export const createQuoteSchema = z.object({
   idempotencyKey: uuidSchema,
   revisionOfQuoteId: z.preprocess((value) => value === "" ? undefined : value, uuidSchema.optional()),
+  serviceOrderId: z.preprocess((value) => value === "" ? undefined : value, uuidSchema.optional()),
+  evidenceIds: z.array(uuidSchema).max(6, "Selecione no máximo seis fotos.").optional(),
   customerId: uuidSchema,
   equipmentId: uuidSchema,
   reportedProblem: z.string().trim().min(5, "Descreva o problema ou a necessidade do cliente.").max(5000, "O relato deve ter no máximo 5.000 caracteres."),

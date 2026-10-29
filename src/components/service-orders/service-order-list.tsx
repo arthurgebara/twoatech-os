@@ -70,12 +70,12 @@ export function ServiceOrderList({
           <h2 className="text-sm font-medium">
             {search
               ? "Nenhuma ordem encontrada"
-              : "Nenhuma ordem de serviço aberta"}
+              : "Nenhum atendimento aberto"}
           </h2>
           <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
             {search
               ? "Revise o número, cliente ou equipamento informado."
-              : "Crie a primeira ordem para iniciar um atendimento."}
+              : "Abra o primeiro atendimento para registrar a entrada."}
           </p>
           {search ? (
             <Link
@@ -119,7 +119,7 @@ export function ServiceOrderList({
                 <tr key={order.id} className="transition-colors hover:bg-muted/25">
                   <td className="px-4 py-3">
                     <p className="font-medium">
-                      {formatServiceOrderNumber(order.number)}
+                      {formatServiceOrderNumber(order.number, order.isIntake)}
                     </p>
                     <p className="mt-0.5 max-w-[260px] truncate text-xs text-muted-foreground">
                       {order.reportedProblem}
@@ -145,7 +145,7 @@ export function ServiceOrderList({
                       className={cn(
                         buttonVariants({ variant: "ghost", size: "icon-sm" }),
                       )}
-                      aria-label={`Visualizar ${formatServiceOrderNumber(order.number)}`}
+                      aria-label={`Visualizar ${formatServiceOrderNumber(order.number, order.isIntake)}`}
                     >
                       <Eye aria-hidden="true" />
                     </Link>
@@ -162,7 +162,7 @@ export function ServiceOrderList({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">
-                    {formatServiceOrderNumber(order.number)}
+                    {formatServiceOrderNumber(order.number, order.isIntake)}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatBrazilianDateTime(order.createdAt)}

@@ -1,5 +1,8 @@
 import "server-only";
 
+import sharp from "sharp";
+import { supabaseStorage } from "@/lib/supabase/storage";
+
 import { formatEquipmentName } from "@/components/equipment/equipment-formatters";
 import type {
   ChecklistPdfDto,
@@ -42,6 +45,7 @@ function checklistDto(order: OrderDocumentRecord, type: "ENTRY" | "EXIT"): Check
     type,
     status: checklist.status,
     serviceOrderNumber: order.number,
+    isIntake: order.isIntake,
     customer: customerDto(order.customer),
     equipment: equipmentDto(order.equipment),
     notes: checklist.notes,
@@ -60,6 +64,7 @@ export const pdfDocumentService = {
     const checklists = ["ENTRY", "EXIT"].map((type) => checklistDto(order, type as "ENTRY" | "EXIT")).filter((item): item is ChecklistPdfDto => item !== null);
     return {
       number: order.number,
+      isIntake: order.isIntake,
       status: order.status,
       createdAt: order.createdAt,
       receivedAt: order.receivedAt,
@@ -106,8 +111,20 @@ export const pdfDocumentService = {
     if (!parsed.success) return null;
     const quote = await pdfDocumentRepository.findQuote(parsed.data);
     if (!quote) return null;
+    const evidence: QuotePdfDto["evidence"] = [];
+    // Fetch sequentially to bound memory; selection is validated at quote creation.
+    for (const { attachment } of quote.evidence) {
+      const { data, error } = await supabaseStorage().from(attachment.bucket).download(attachment.objectPath);
+      if (error || !data) throw new Error("Não foi possível carregar uma foto selecionada para o orçamento.");
+      const image = await sharp(Buffer.from(await data.arrayBuffer()), { limitInputPixels: 40_000_000 })
+        .rotate().resize({ width: 1400, height: 1400, fit: "inside", withoutEnlargement: true }).flatten({ background: "#ffffff" }).jpeg({ quality: 85 }).toBuffer();
+      evidence.push({ name: attachment.originalName, image });
+    }
     return {
       number: quote.number,
+      kind: quote.kind,
+      isIntake: quote.serviceOrder?.isIntake ?? false,
+      evidence,
       version: quote.version,
       status: quote.status,
       serviceOrderNumber: quote.serviceOrder?.number ?? null,

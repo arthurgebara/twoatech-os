@@ -22,6 +22,7 @@ const select = {
     select: {
       id: true,
       number: true,
+      isIntake: true,
       customer: { select: { name: true } },
       equipment: { select: { brand: true, model: true, type: true } },
     },

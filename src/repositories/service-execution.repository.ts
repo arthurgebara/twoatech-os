@@ -12,7 +12,7 @@ export const serviceExecutionRepository = {
   findOrder(transaction: ServiceExecutionTransaction, id: string) {
     return transaction.serviceOrder.findUnique({
       where: { id },
-      select: { id: true, number: true, status: true, serviceReport: { select: { id: true } } },
+      select: { id: true, number: true, status: true, isIntake: true, diagnostic: { select: { id: true } }, quotes: { where: { status: "APPROVED" }, select: { id: true } }, checklists: { where: { type: "ENTRY" }, select: { status: true } }, serviceReport: { select: { id: true } } },
     });
   },
   updateStatus(

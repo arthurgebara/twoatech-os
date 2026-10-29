@@ -22,6 +22,7 @@ export type ChecklistPdfDto = {
   type: ChecklistType;
   status: ChecklistStatus;
   serviceOrderNumber: number;
+  isIntake: boolean;
   customer: CustomerPdfDto;
   equipment: EquipmentPdfDto;
   notes: string | null;
@@ -31,6 +32,9 @@ export type ChecklistPdfDto = {
 };
 
 export type QuotePdfDto = {
+  kind: "LEGACY" | "ESTIMATE" | "DEFINITIVE";
+  isIntake: boolean;
+  evidence: Array<{ name: string; image: Buffer }>;
   number: number;
   version: number;
   status: QuoteStatus;
@@ -47,6 +51,7 @@ export type QuotePdfDto = {
 };
 
 export type ServiceOrderPdfDto = {
+  isIntake: boolean;
   number: number;
   status: ServiceOrderStatus;
   createdAt: Date;

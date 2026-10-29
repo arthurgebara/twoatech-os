@@ -31,12 +31,18 @@ const textareaClassName = "w-full resize-y rounded-lg border border-input bg-tra
 
 export function QuoteForm({
   idempotencyKey,
+  serviceOrderId,
+  photos = [],
+  isLegacy = false,
   catalog,
   customers: initialCustomers,
   equipment: initialEquipment,
   initialValues,
 }: {
   idempotencyKey: string;
+  serviceOrderId?: string;
+  isLegacy?: boolean;
+  photos?: { id: string; name: string }[];
   catalog: CatalogOption[];
   customers: CustomerOption[];
   equipment: EquipmentOption[];
@@ -53,6 +59,8 @@ export function QuoteForm({
       customerId: initialValues?.customerId ?? "",
       equipmentId: initialValues?.equipmentId ?? "",
       idempotencyKey,
+      serviceOrderId: serviceOrderId ?? initialValues?.serviceOrderId,
+      evidenceIds: initialValues?.evidenceIds ?? [],
       revisionOfQuoteId: initialValues?.revisionOfQuoteId,
       reportedProblem: initialValues?.reportedProblem ?? "",
       receivedAccessories: initialValues?.receivedAccessories ?? "",
@@ -67,6 +75,7 @@ export function QuoteForm({
   const selectedCustomerId = useWatch({ control, name: "customerId" });
   const watchedItems = useWatch({ control, name: "items" });
   const watchedDiscount = useWatch({ control, name: "discount" });
+  const identitiesLocked = Boolean(serviceOrderId || initialValues?.revisionOfQuoteId);
   const customerEquipment = equipment.filter((item) => item.customerId === selectedCustomerId && item.isActive);
   const subtotal = watchedItems.reduce((sum, item) => {
     const quantity = Number(item.quantity.replace(",", ".")) || 0;
@@ -121,10 +130,17 @@ export function QuoteForm({
   return (
     <>
       <form onSubmit={handleSubmit(submit, invalid)} className="space-y-7" noValidate>
+        {serviceOrderId ? <input type="hidden" {...register("serviceOrderId")} /> : null}
         {initialValues?.revisionOfQuoteId ? <input type="hidden" {...register("revisionOfQuoteId")} /> : null}
         {errors.root?.message ? <p role="alert" aria-live="polite" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errors.root.message}</p> : null}
 
-        <section className="space-y-4">
+        {serviceOrderId ? <p className="rounded-lg border p-3 text-sm">Cliente e equipamento vinculados ao atendimento. A entrada e o diagnóstico devem estar concluídos.</p> : isLegacy ? <p className="rounded-lg border p-3 text-sm">Revisão de orçamento anterior: as condições do fluxo original são preservadas.</p> : <p className="rounded-lg border p-3 text-sm">Pré-orçamento: estimativa sujeita ao diagnóstico presencial. Não autoriza execução do serviço.</p>}
+        {photos.length ? <section className="space-y-3"><h2 className="font-medium">Fotos para o cliente</h2><p className="text-xs text-muted-foreground">Selecione até seis evidências relevantes para incluir no PDF. Os demais anexos continuam internos. Formatos: JPEG, PNG e WebP.</p>
+          <div className="grid gap-3 sm:grid-cols-2">{photos.map((photo) => <label key={photo.id} className="flex items-center gap-3 rounded-lg border p-3 text-sm"><input type="checkbox" value={photo.id} {...register("evidenceIds")} /><a href={`/api/anexos/${photo.id}`} target="_blank" rel="noreferrer" className="underline">{photo.name}</a></label>)}</div>
+          {errors.evidenceIds?.message ? <p className="text-sm text-destructive">{errors.evidenceIds.message}</p> : null}
+        </section> : null}
+        {identitiesLocked ? <div className="rounded-lg border p-3 text-sm"><p className="font-medium">{customers.find((customer) => customer.id === initialValues?.customerId)?.name}</p><p className="text-muted-foreground">{equipment.find((item) => item.id === initialValues?.equipmentId) ? formatEquipmentName(equipment.find((item) => item.id === initialValues?.equipmentId)!) : "Equipamento do atendimento"}</p></div> : null}
+        <section hidden={identitiesLocked} className="space-y-4">
           <div><h2 className="font-medium">1. Cliente e equipamento</h2><p className="text-xs text-muted-foreground">Selecione um cadastro existente ou crie sem sair do orçamento.</p></div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
@@ -171,7 +187,7 @@ export function QuoteForm({
         <div className="grid gap-4 border-t pt-6 md:grid-cols-2"><div className="space-y-2"><Label htmlFor="valid-until">Validade</Label><Input id="valid-until" type="date" aria-invalid={Boolean(errors.validUntil)} {...register("validUntil")} />{errors.validUntil?.message ? <p className="text-xs text-destructive">{errors.validUntil.message}</p> : null}</div><div className="space-y-2"><Label htmlFor="discount">Desconto</Label><Controller name="discount" control={control} render={({ field }) => <Input {...field} id="discount" inputMode="numeric" aria-invalid={Boolean(errors.discount)} onChange={(event) => field.onChange(maskBrlInput(event.target.value))} />} />{errors.discount?.message ? <p className="text-xs text-destructive">{errors.discount.message}</p> : null}</div></div>
         <div className="space-y-2"><Label htmlFor="quote-notes">Observações para o cliente</Label><textarea id="quote-notes" rows={4} className={textareaClassName} aria-invalid={Boolean(errors.notes)} {...register("notes")} />{errors.notes?.message ? <p className="text-xs text-destructive">{errors.notes.message}</p> : null}</div>
         <div className="flex flex-col gap-4 rounded-xl border bg-muted/20 p-4 sm:flex-row sm:items-end sm:justify-between"><div className="grid grid-cols-3 gap-6 text-sm"><div><p className="text-muted-foreground">Subtotal</p><p className="font-medium">{formatBrazilianCurrency(subtotal)}</p></div><div><p className="text-muted-foreground">Desconto</p><p className="font-medium">{formatBrazilianCurrency(discount)}</p></div><div><p className="text-muted-foreground">Total</p><p className="font-semibold">{formatBrazilianCurrency(Math.max(0, subtotal - discount))}</p></div></div><Button type="submit" disabled={isSubmitting}>{isSubmitting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}{isSubmitting ? "Criando..." : "Criar orçamento"}</Button></div>
-        <p className="text-xs text-muted-foreground">A ordem de serviço será criada somente quando este orçamento for aprovado.</p>
+        <p className="text-xs text-muted-foreground">{serviceOrderId ? "A aprovação autoriza a execução e converte o atendimento em OS, preservando o número e o histórico." : isLegacy ? "A revisão preserva as condições do orçamento original." : "Após o recebimento, abra o atendimento e conclua entrada e diagnóstico para emitir o orçamento definitivo."}</p>
       </form>
 
       <Sheet open={customerSheetOpen} onOpenChange={setCustomerSheetOpen}><SheetContent className="w-full overflow-y-auto sm:max-w-xl"><SheetHeader><SheetTitle>Novo cliente</SheetTitle><SheetDescription>Cadastre e continue o orçamento sem perder os itens.</SheetDescription></SheetHeader><div className="p-4 pt-0"><CustomerForm mode="create" embedded onCreated={customerCreated} /></div></SheetContent></Sheet>

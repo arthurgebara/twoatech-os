@@ -83,7 +83,7 @@ function customerEquipment(doc: PDFKit.PDFDocument, customer: ChecklistPdfDto["c
 }
 
 export function generateServiceOrderPdf(dto: ServiceOrderPdfDto) {
-  const title = `Ordem de Serviço #${String(dto.number).padStart(6, "0")}`;
+  const title = `${dto.isIntake ? "Atendimento" : "Ordem de Serviço"} #${String(dto.number).padStart(6, "0")}`;
   return documentBuffer(title, "Ordem de serviço completa", (doc) => {
     doc.fillColor(TEXT).font("Helvetica-Bold").fontSize(20).text(title);
     doc.moveDown(0.25).fillColor(MUTED).font("Helvetica").fontSize(9).text(`Status: ${serviceOrderStatusLabels[dto.status]}  |  Abertura: ${formatBrazilianDateTime(dto.createdAt)}`);
@@ -132,11 +132,15 @@ export function generateServiceOrderPdf(dto: ServiceOrderPdfDto) {
 }
 
 export function generateQuotePdf(dto: QuotePdfDto) {
-  const title = `Orçamento #${dto.number} - versão ${dto.version}`;
+  const title = `${dto.kind === "ESTIMATE" ? "Pré-orçamento" : "Orçamento"} #${dto.number} - versão ${dto.version}`;
   return documentBuffer(title, "Orçamento de serviços", (doc) => {
     doc.fillColor(TEXT).font("Helvetica-Bold").fontSize(20).text(title);
-    const orderReference = dto.serviceOrderNumber ? `OS #${String(dto.serviceOrderNumber).padStart(6, "0")}` : "OS gerada após aprovação";
+    const orderReference = dto.serviceOrderNumber ? `${dto.isIntake ? "Atendimento" : "OS"} #${String(dto.serviceOrderNumber).padStart(6, "0")}` : "Sem atendimento vinculado";
     doc.moveDown(0.25).fillColor(MUTED).font("Helvetica").fontSize(9).text(`${orderReference}  |  ${quoteStatusLabels[dto.status]}  |  Validade: ${dateOnly(dto.validUntil)}`);
+    if (dto.kind === "ESTIMATE") {
+      doc.moveDown(0.7).fillColor(TEXT).font("Helvetica-Bold").fontSize(10).text("ESTIMATIVA SUJEITA AO DIAGNÓSTICO PRESENCIAL");
+      doc.font("Helvetica").fontSize(9).text("Valores e serviços poderão mudar após a conferência de entrada e o diagnóstico. Este pré-orçamento não autoriza a execução do serviço.");
+    }
     customerEquipment(doc, dto.customer, dto.equipment);
     section(doc, "Itens do orçamento");
     for (const item of dto.items) {
@@ -151,12 +155,27 @@ export function generateQuotePdf(dto: QuotePdfDto) {
     doc.fillColor(BRAND_NAVY).font("Helvetica-Bold").fontSize(12).text(`TOTAL: ${formatBrazilianCurrency(dto.total)}`, { align: "right" });
     section(doc, "Observações");
     paragraph(doc, "Condições e observações", dto.notes);
+    if (dto.evidence.length) {
+      doc.addPage();
+      section(doc, "Evidências do diagnóstico");
+      doc.fillColor(MUTED).font("Helvetica").fontSize(9).text("Fotos selecionadas pela assistência para fundamentar este orçamento.");
+      doc.moveDown();
+      for (const [index, photo] of dto.evidence.entries()) {
+        if (doc.y + 240 > 770) doc.addPage();
+        const top = doc.y;
+        doc.image(photo.image, 48, top, { fit: [499, 205], align: "center", valign: "center" });
+        doc.y = top + 211;
+        doc.x = 48;
+        doc.fillColor(MUTED).font("Helvetica").fontSize(8).text(`Foto ${index + 1}: ${photo.name}`, { width: 499, height: 22, ellipsis: true });
+        doc.y = top + 240;
+      }
+    }
   });
 }
 
 export function generateChecklistPdf(dto: ChecklistPdfDto) {
   const label = dto.type === "ENTRY" ? "Entrada" : "Saída";
-  const title = `Checklist de ${label} - OS #${String(dto.serviceOrderNumber).padStart(6, "0")}`;
+  const title = `Checklist de ${label} - ${dto.isIntake ? "Atendimento" : "OS"} #${String(dto.serviceOrderNumber).padStart(6, "0")}`;
   return documentBuffer(title, `Checklist de ${label.toLowerCase()}`, (doc) => {
     doc.fillColor(TEXT).font("Helvetica-Bold").fontSize(20).text(title);
     doc.moveDown(0.25).fillColor(MUTED).font("Helvetica").fontSize(9).text(`Status: ${dto.status === "COMPLETED" ? "Concluída" : "Pendente"}`);

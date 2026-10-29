@@ -14,6 +14,7 @@ export const dashboardRepository = {
         select: {
           id: true,
           number: true,
+          isIntake: true,
           status: true,
           createdAt: true,
           customer: { select: { name: true } },
@@ -22,7 +23,7 @@ export const dashboardRepository = {
         orderBy: { createdAt: "desc" },
         take: 6,
       }),
-      prisma.quote.count({ where: { status: "SENT", serviceOrderId: null } }),
+      prisma.quote.count({ where: { status: "SENT", serviceOrderId: null, kind: "LEGACY" } }),
     ]);
     return {
       distribution: distribution.map((item) => ({

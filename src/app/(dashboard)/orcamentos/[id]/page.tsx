@@ -37,7 +37,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           <p className="mt-1 text-sm text-muted-foreground">Versão {quote.version} · criado por {quote.createdBy.name} em {formatBrazilianDateTime(quote.createdAt)}</p>
         </div>
         <div className="space-y-3">
-          <QuoteActions quoteId={quote.id} status={quote.status} />
+          <QuoteActions quoteId={quote.id} status={quote.status} isEstimate={quote.kind === "ESTIMATE"} />
           <div className="flex flex-wrap gap-2">
             {quote.status === "REJECTED" ? <Link href={`/orcamentos/novo?revisao=${quote.id}`} className={cn(buttonVariants({ size: "sm" }))}><RefreshCw aria-hidden="true" /> Criar nova versão</Link> : null}
             <ShareQuotePdfButton
@@ -52,6 +52,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </header>
+      {quote.kind === "ESTIMATE" ? <Card><CardContent className="space-y-3 pt-6"><p className="text-sm">Pré-orçamento remoto: estimativa sujeita ao diagnóstico presencial. Não autoriza execução.</p><Link href={`/ordens-de-servico/nova?estimativa=${quote.id}`} className={cn(buttonVariants({ size: "sm" }))}>Abrir atendimento para receber equipamento</Link></CardContent></Card> : quote.kind === "DEFINITIVE" ? <p className="text-sm text-muted-foreground">Orçamento definitivo baseado na entrada e no diagnóstico. {quote.evidence.length} foto(s) selecionada(s) para o PDF.</p> : null}
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader className="border-b"><CardTitle>Itens</CardTitle><CardDescription>Descrição e valores preservados no momento da criação.</CardDescription></CardHeader>
@@ -71,7 +72,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         </Card>
         <div className="space-y-4">
           <Card><CardHeader><CardTitle className="text-base">Referências</CardTitle></CardHeader><CardContent className="space-y-4 text-sm">
-            <div className="flex gap-3"><ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Ordem</p>{quote.serviceOrder ? <Link className="font-medium hover:text-primary" href={`/ordens-de-servico/${quote.serviceOrder.id}`}>{formatServiceOrderNumber(quote.serviceOrder.number)}</Link> : <p className="font-medium">Será gerada na aprovação</p>}</div></div>
+            <div className="flex gap-3"><ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Ordem</p>{quote.serviceOrder ? <Link className="font-medium hover:text-primary" href={`/ordens-de-servico/${quote.serviceOrder.id}`}>{formatServiceOrderNumber(quote.serviceOrder.number, quote.serviceOrder.isIntake)}</Link> : <p className="font-medium">Sem atendimento vinculado</p>}</div></div>
             <div className="flex gap-3"><UserRound className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{quote.customer.name}</p></div></div>
             <div className="flex gap-3"><ClipboardList className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Equipamento</p><p className="font-medium">{formatEquipmentName(quote.equipment)}</p></div></div>
             <div className="flex gap-3"><CalendarDays className="size-4 text-muted-foreground" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Validade</p><p className="font-medium">{formatDate(quote.validUntil)}</p></div></div>

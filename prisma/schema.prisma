@@ -40,6 +40,12 @@ enum ChecklistStatus {
   COMPLETED
 }
 
+enum QuoteKind {
+  LEGACY
+  ESTIMATE
+  DEFINITIVE
+}
+
 enum QuoteStatus {
   DRAFT
   SENT
@@ -62,6 +68,8 @@ enum QuoteRequestStatus {
 
 enum ServiceOrderTimelineEventType {
   ORDEM_CRIADA
+  ATENDIMENTO_CRIADO
+  ATENDIMENTO_CONVERTIDO
   EQUIPAMENTO_RECEBIDO
   CHECKLIST_ENTRADA_CONCLUIDO
   DIAGNOSTICO_REGISTRADO
@@ -166,6 +174,8 @@ model Equipment {
 model ServiceOrder {
   id                  String                      @id @default(uuid()) @db.Uuid
   number              Int                         @unique @default(autoincrement())
+  isIntake            Boolean                     @default(false)
+  convertedAt         DateTime?                   @db.Timestamptz(3)
   customerId          String                      @db.Uuid
   equipmentId         String                      @db.Uuid
   status              ServiceOrderStatus          @default(OPEN)
@@ -242,6 +252,7 @@ model ChecklistAttachment {
   uploadedAt        DateTime?     @db.Timestamptz(3)
   createdAt         DateTime      @default(now()) @db.Timestamptz(3)
   serviceOrder      ServiceOrder  @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  quoteEvidence     QuoteEvidence[]
   uploadedBy        User          @relation("ChecklistAttachmentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
 
   @@index([serviceOrderId, checklistType, uploadedAt])
@@ -301,6 +312,7 @@ model Quote {
   id             String       @id @default(uuid()) @db.Uuid
   number         Int          @unique @default(autoincrement())
   seriesId       String       @db.Uuid
+  kind           QuoteKind    @default(LEGACY)
   customerId     String       @db.Uuid
   equipmentId    String       @db.Uuid
   serviceOrderId String?      @db.Uuid
@@ -327,6 +339,7 @@ model Quote {
   serviceOrder   ServiceOrder? @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
   createdBy      User         @relation("QuoteCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   items          QuoteItem[]
+  evidence       QuoteEvidence[]
 
   @@unique([seriesId, version])
   @@index([customerId])
@@ -372,4 +385,16 @@ model ServiceOrderTimelineEvent {
   @@index([serviceOrderId, occurredAt(sort: Desc)])
   @@index([type])
   @@map("service_order_timeline_events")
+}
+
+model QuoteEvidence {
+  quoteId      String @db.Uuid
+  attachmentId String @db.Uuid
+  position     Int
+  quote        Quote @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  attachment   ChecklistAttachment @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+
+  @@id([quoteId, attachmentId])
+  @@unique([quoteId, position])
+  @@map("quote_evidence")
 }

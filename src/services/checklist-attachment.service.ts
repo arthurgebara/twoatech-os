@@ -31,10 +31,10 @@ export class ChecklistAttachmentServiceError extends Error {
 async function assertUploadAllowed(serviceOrderId: string, checklistType: ChecklistType) {
   const order = await checklistAttachmentRepository.findOrder(serviceOrderId, checklistType);
   if (!order) throw new ChecklistAttachmentServiceError("Ordem de serviço não encontrada.");
-  if (order.checklists[0]?.status === "COMPLETED") {
+  if (checklistType === "EXIT" && order.checklists[0]?.status === "COMPLETED") {
     throw new ChecklistAttachmentServiceError("A checklist concluída não aceita novos anexos.");
   }
-  if (checklistType === "ENTRY" && !["OPEN", "RECEIVED"].includes(order.status)) {
+  if (checklistType === "ENTRY" && !["OPEN", "RECEIVED", "DIAGNOSING", "QUOTE_REJECTED"].includes(order.status)) {
     throw new ChecklistAttachmentServiceError("Os anexos de entrada não podem mais ser alterados nesta etapa.");
   }
   if (checklistType === "EXIT" && order.status !== "COMPLETED") {

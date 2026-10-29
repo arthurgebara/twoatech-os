@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 
 const steps = [
   { icon: Inbox, title: "Receba e organize", text: "Solicitações enviadas pela nova home chegam na caixa de entrada para você entrar em contato." },
-  { icon: FileText, title: "Comece pelo orçamento", text: "Cadastre cliente e equipamento dentro do atendimento, monte a proposta e compartilhe o PDF." },
-  { icon: Wrench, title: "Siga a ordem guiada", text: "Após a aprovação, a OS é criada e libera checklist, diagnóstico, execução, saída e entrega na sequência correta." },
+  { icon: FileText, title: "Comece pela entrada", text: "Abra um atendimento para o cliente e equipamento, confira a entrada e registre o diagnóstico antes do orçamento definitivo." },
+  { icon: Wrench, title: "Siga a ordem guiada", text: "Abra o atendimento, conclua entrada e diagnóstico e emita o orçamento. A aprovação converte em OS e libera execução, saída e entrega." },
   { icon: Paperclip, title: "Registre evidências", text: "Anexe fotos e PDFs nas checklists de entrada e saída. Os arquivos ficam privados." },
 ] as const;
 

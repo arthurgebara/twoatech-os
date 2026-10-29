@@ -26,6 +26,9 @@ function failure(error: unknown): QuoteActionResult {
 
 function revalidateQuote(quoteId: string, orderId?: string) {
   revalidatePath("/orcamentos");
+  revalidatePath("/ordens-de-servico");
+  revalidatePath("/dashboard");
+  revalidatePath("/historico");
   revalidatePath(`/orcamentos/${quoteId}`);
   if (orderId) revalidatePath(`/ordens-de-servico/${orderId}`);
 }

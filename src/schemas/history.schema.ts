@@ -20,6 +20,8 @@ export const historyQuerySchema = z.object({
 });
 
 export const timelineEventTypeLabels: Record<ServiceOrderTimelineEventType, string> = {
+  ATENDIMENTO_CRIADO: "Atendimento criado",
+  ATENDIMENTO_CONVERTIDO: "Atendimento convertido em OS",
   ORDEM_CRIADA: "Ordem criada",
   EQUIPAMENTO_RECEBIDO: "Equipamento recebido",
   CHECKLIST_ENTRADA_CONCLUIDO: "Checklist de entrada concluída",

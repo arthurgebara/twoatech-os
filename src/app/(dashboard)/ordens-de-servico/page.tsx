@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { serviceOrderService } from "@/services/service-order.service";
 
 export const metadata: Metadata = {
-  title: "Ordens de Serviço",
+  title: "Atendimentos e OS",
 };
 
 export default async function ServiceOrdersPage({
@@ -30,14 +30,14 @@ export default async function ServiceOrdersPage({
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Ordens de Serviço
+            Atendimentos e OS
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Acompanhe a abertura, o recebimento e o histórico dos atendimentos.
           </p>
         </div>
         <Link
-          href="/orcamentos/novo"
+          href="/ordens-de-servico/nova"
           className={cn(buttonVariants({ size: "lg" }))}
         >
           <Plus aria-hidden="true" />

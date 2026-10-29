@@ -74,6 +74,9 @@ export const serviceExecutionService = {
       if (order.status !== config.previousStatus) {
         throw new ServiceExecutionError(`Esta ação não é permitida quando a ordem está em ${statusName(order.status)}.`);
       }
+      if (command === "START" && (order.isIntake || !order.diagnostic || order.checklists[0]?.status !== "COMPLETED" || !order.quotes.length)) {
+        throw new ServiceExecutionError("Conclua entrada, diagnóstico e aprovação do orçamento para iniciar o serviço.");
+      }
       const occurredAt = new Date();
       const changed = await serviceExecutionRepository.updateStatus(transaction, order.id, config.previousStatus, config.newStatus);
       if (changed.count !== 1) throw new ServiceExecutionError("A situação da ordem mudou. Atualize a página.");

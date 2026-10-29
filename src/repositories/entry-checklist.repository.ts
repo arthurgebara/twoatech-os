@@ -121,36 +121,34 @@ export const entryChecklistRepository = {
       ]),
     );
 
-    await Promise.all(
-      input.items.map((item) => {
-        const definition = definitions.get(item.key);
+    for (const item of input.items) {
+      const definition = definitions.get(item.key);
 
-        if (!definition) {
-          throw new Error("Definição de checklist não encontrada.");
-        }
+      if (!definition) {
+        throw new Error("Definição de checklist não encontrada.");
+      }
 
-        return transaction.checklistItem.upsert({
-          where: {
-            checklistId_key: {
-              checklistId,
-              key: item.key,
-            },
-          },
-          create: {
+      await transaction.checklistItem.upsert({
+        where: {
+          checklistId_key: {
             checklistId,
-            key: definition.key,
-            label: definition.label,
-            position: definition.position,
-            checked: item.checked,
-            notes: item.notes || null,
+            key: item.key,
           },
-          update: {
-            checked: item.checked,
-            notes: item.notes || null,
-          },
-        });
-      }),
-    );
+        },
+        create: {
+          checklistId,
+          key: definition.key,
+          label: definition.label,
+          position: definition.position,
+          checked: item.checked,
+          notes: item.notes || null,
+        },
+        update: {
+          checked: item.checked,
+          notes: item.notes || null,
+        },
+      });
+    }
 
     return transaction.serviceOrderChecklist.update({
       where: { id: checklistId },

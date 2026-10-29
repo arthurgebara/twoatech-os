@@ -8,7 +8,7 @@ import { approveQuoteAction, rejectQuoteAction, sendQuoteAction, type QuoteActio
 import { Button } from "@/components/ui/button";
 import type { QuoteStatus } from "@/generated/prisma/enums";
 
-export function QuoteActions({ quoteId, status }: { quoteId: string; status: QuoteStatus }) {
+export function QuoteActions({ quoteId, status, isEstimate = false }: { quoteId: string; status: QuoteStatus; isEstimate?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
@@ -31,7 +31,7 @@ export function QuoteActions({ quoteId, status }: { quoteId: string; status: Quo
       <div className="flex flex-wrap gap-2">
         {status === "DRAFT" ? <Button disabled={pending} onClick={() => run(sendQuoteAction)}><Send aria-hidden="true" /> Enviar orçamento</Button> : (
           <>
-            <Button disabled={pending} onClick={() => run(approveQuoteAction)}><Check aria-hidden="true" /> Aprovar</Button>
+            {!isEstimate ? <Button disabled={pending} onClick={() => run(approveQuoteAction)}><Check aria-hidden="true" /> Aprovar</Button> : null}
             <Button variant="destructive" disabled={pending} onClick={() => run(rejectQuoteAction)}><X aria-hidden="true" /> Rejeitar</Button>
           </>
         )}

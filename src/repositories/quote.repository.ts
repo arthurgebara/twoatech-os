@@ -10,6 +10,7 @@ const quoteDetailSelect = {
   seriesId: true,
   version: true,
   status: true,
+  kind: true,
   reportedProblem: true,
   receivedAccessories: true,
   generalNotes: true,
@@ -26,7 +27,8 @@ const quoteDetailSelect = {
   createdAt: true,
   customer: { select: { id: true, name: true, document: true, phone: true, isActive: true } },
   equipment: { select: { id: true, customerId: true, type: true, brand: true, model: true, serialNumber: true, isActive: true } },
-  serviceOrder: { select: { id: true, number: true, status: true } },
+  serviceOrder: { select: { id: true, number: true, status: true, isIntake: true } },
+  evidence: { select: { attachmentId: true, position: true }, orderBy: { position: "asc" } },
   createdBy: { select: { id: true, name: true } },
   items: {
     select: { id: true, type: true, description: true, quantity: true, unitPrice: true, total: true, position: true, serviceCatalogItemId: true },
@@ -39,12 +41,13 @@ const quoteListSelect = {
   number: true,
   version: true,
   status: true,
+  kind: true,
   total: true,
   validUntil: true,
   createdAt: true,
   customer: { select: { id: true, name: true } },
   equipment: { select: { id: true, type: true, brand: true, model: true } },
-  serviceOrder: { select: { id: true, number: true } },
+  serviceOrder: { select: { id: true, number: true, isIntake: true } },
 } satisfies Prisma.QuoteSelect;
 
 export type QuoteDetail = Prisma.QuoteGetPayload<{ select: typeof quoteDetailSelect }>;
@@ -94,6 +97,20 @@ export const quoteRepository = {
       where: { id: equipmentId },
       select: { id: true, customerId: true, isActive: true, customer: { select: { id: true, isActive: true } } },
     });
+  },
+  findOrder(transaction: QuoteTransaction, id: string) {
+    return transaction.serviceOrder.findUnique({ where: { id }, select: {
+      id: true, customerId: true, equipmentId: true, status: true, isIntake: true,
+      diagnostic: { select: { id: true } },
+      checklists: { where: { type: "ENTRY" }, select: { status: true } },
+      quotes: { where: { status: { in: ["DRAFT", "SENT", "APPROVED"] } }, select: { id: true } },
+    } });
+  },
+  findEvidence(transaction: QuoteTransaction, serviceOrderId: string, ids: string[]) {
+    return transaction.checklistAttachment.findMany({ where: {
+      id: { in: ids }, serviceOrderId, checklistType: "ENTRY", uploadedAt: { not: null },
+      mimeType: { in: ["image/jpeg", "image/png", "image/webp"] },
+    }, select: { id: true } });
   },
   findCatalogItems(transaction: QuoteTransaction, ids: string[]) {
     return transaction.serviceCatalogItem.findMany({ where: { id: { in: ids }, isActive: true }, select: { id: true, name: true, defaultPrice: true } });
@@ -168,8 +185,9 @@ export const quoteRepository = {
     id: string,
     previousStatus: Prisma.ServiceOrderWhereInput["status"],
     status: "AWAITING_APPROVAL" | "APPROVED" | "QUOTE_REJECTED",
+    convertedAt?: Date,
   ) {
-    return transaction.serviceOrder.updateMany({ where: { id, status: previousStatus }, data: { status } });
+    return transaction.serviceOrder.updateMany({ where: { id, status: previousStatus }, data: { status, ...(convertedAt ? { isIntake: false, convertedAt } : {}) } });
   },
   findTimelineEvent(transaction: QuoteTransaction, serviceOrderId: string, idempotencyKey: string) {
     return transaction.serviceOrderTimelineEvent.findUnique({

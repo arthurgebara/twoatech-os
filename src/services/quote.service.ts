@@ -59,7 +59,7 @@ async function calculateItems(transaction: QuoteTransaction, input: CreateQuoteI
   });
 }
 
-async function mutateLegacyOrder(
+async function mutateLinkedOrder(
   transaction: QuoteTransaction,
   quote: QuoteDetail,
   responsibleUserId: string,
@@ -76,8 +76,16 @@ async function mutateLegacyOrder(
   if (!config.previous.includes(quote.serviceOrder.status)) {
     throw new QuoteServiceError("A situação atual da ordem não permite esta ação no orçamento.");
   }
-  const changed = await quoteRepository.updateOrderStatus(transaction, quote.serviceOrder.id, quote.serviceOrder.status, config.next);
+  const changed = await quoteRepository.updateOrderStatus(transaction, quote.serviceOrder.id, quote.serviceOrder.status, config.next, target === "APPROVED" && quote.serviceOrder.isIntake ? occurredAt : undefined);
   if (changed.count !== 1) throw new QuoteServiceError("A situação da ordem mudou. Atualize a página.");
+  if (target === "APPROVED" && quote.serviceOrder.isIntake) {
+    await quoteRepository.createTimelineEvent(transaction, {
+      serviceOrderId: quote.serviceOrder.id, type: "ATENDIMENTO_CONVERTIDO",
+      title: "Atendimento convertido em OS", description: "Execução autorizada pela aprovação do orçamento definitivo.",
+      responsibleUserId, occurredAt, idempotencyKey: `convert:${quote.id}`,
+      metadata: { quoteId: quote.id, numberPreserved: quote.serviceOrder.number },
+    });
+  }
   const event = await quoteRepository.createTimelineEvent(transaction, {
     serviceOrderId: quote.serviceOrder.id,
     type: config.event,
@@ -128,6 +136,27 @@ export const quoteService = {
         throw new QuoteServiceError("Cliente e equipamento não podem ser alterados entre versões do orçamento.");
       }
       await validateEquipment(transaction, parsed.customerId, parsed.equipmentId);
+      const serviceOrderId = sourceQuote?.serviceOrder?.id ?? parsed.serviceOrderId;
+      if (sourceQuote && parsed.serviceOrderId && parsed.serviceOrderId !== sourceQuote.serviceOrder?.id) {
+        throw new QuoteServiceError("O vínculo do atendimento não pode ser alterado na revisão.");
+      }
+      const kind = sourceQuote?.kind ?? (serviceOrderId ? "DEFINITIVE" : "ESTIMATE");
+      if (serviceOrderId) {
+        const order = await quoteRepository.findOrder(transaction, serviceOrderId);
+        if (!order || order.customerId !== parsed.customerId || order.equipmentId !== parsed.equipmentId) {
+          throw new QuoteServiceError("O atendimento não corresponde ao cliente e equipamento informados.");
+        }
+        if (!["DIAGNOSING", "QUOTE_REJECTED"].includes(order.status) || !order.diagnostic || order.checklists[0]?.status !== "COMPLETED") {
+          throw new QuoteServiceError("Conclua a entrada e o diagnóstico antes de criar o orçamento definitivo.");
+        }
+        if (order.quotes.length) throw new QuoteServiceError("Este atendimento já possui um orçamento em andamento ou aprovado.");
+      }
+      const evidenceIds = [...new Set(parsed.evidenceIds ?? [])];
+      if (evidenceIds.length) {
+        if (!serviceOrderId || (await quoteRepository.findEvidence(transaction, serviceOrderId, evidenceIds)).length !== evidenceIds.length) {
+          throw new QuoteServiceError("Selecione somente fotos JPEG, PNG ou WebP deste atendimento com envio concluído.");
+        }
+      }
       const items = await calculateItems(transaction, parsed);
       const subtotal = items.reduce((sum, item) => sum.add(item.total), new Prisma.Decimal(0));
       const discount = new Prisma.Decimal(parseBrlValue(parsed.discount) ?? "0");
@@ -137,15 +166,17 @@ export const quoteService = {
       const version = sourceQuote
         ? ((await quoteRepository.nextVersion(transaction, seriesId))._max.version ?? 0) + 1
         : 1;
-      return quoteRepository.create(transaction, {
+      const created = await quoteRepository.create(transaction, {
         id: parsed.idempotencyKey,
         seriesId,
+        kind,
+        evidence: { create: evidenceIds.map((attachmentId, position) => ({ attachmentId, position })) },
         customer: { connect: { id: parsed.customerId } },
         equipment: { connect: { id: parsed.equipmentId } },
         reportedProblem: parsed.reportedProblem,
         receivedAccessories: nullable(parsed.receivedAccessories),
         generalNotes: nullable(parsed.generalNotes),
-        ...(sourceQuote?.serviceOrder ? { serviceOrder: { connect: { id: sourceQuote.serviceOrder.id } } } : {}),
+        ...(serviceOrderId ? { serviceOrder: { connect: { id: serviceOrderId } } } : {}),
         version,
         subtotal,
         discount,
@@ -156,6 +187,12 @@ export const quoteService = {
         createdAt: occurredAt,
         items: { create: items },
       });
+      if (serviceOrderId) await quoteRepository.createTimelineEvent(transaction, {
+        serviceOrderId, type: "ORCAMENTO_CRIADO", title: "Orçamento definitivo criado",
+        description: `Orçamento #${created.number}, versão ${version}.`, responsibleUserId, occurredAt,
+        metadata: { quoteId: created.id, evidenceIds }, idempotencyKey: `quote-created:${created.id}`,
+      });
+      return created;
     });
   },
   send(input: QuoteMutationInput, responsibleUserId: string) {
@@ -174,6 +211,14 @@ export const quoteService = {
       if (!quote) throw new QuoteServiceError("Orçamento não encontrado.");
       const storedKey = target === "SENT" ? quote.sentIdempotencyKey : quote.decisionIdempotencyKey;
       if (quote.status === target && storedKey === parsed.idempotencyKey) return quote;
+      if (target === "APPROVED" && quote.kind === "ESTIMATE") {
+        throw new QuoteServiceError("O pré-orçamento é uma estimativa. Abra o atendimento e conclua entrada e diagnóstico para emitir o orçamento definitivo.");
+      }
+      if (quote.kind === "DEFINITIVE") {
+        if (!quote.serviceOrder) throw new QuoteServiceError("Orçamento definitivo sem atendimento vinculado.");
+        const order = await quoteRepository.findOrder(transaction, quote.serviceOrder.id);
+        if (!order?.diagnostic || order.checklists[0]?.status !== "COMPLETED") throw new QuoteServiceError("A entrada e o diagnóstico são obrigatórios para este orçamento.");
+      }
       const expected = target === "SENT" ? "DRAFT" : "SENT";
       if (quote.status !== expected) throw new QuoteServiceError("Este orçamento não permite essa alteração agora.");
       if (target === "APPROVED" && await quoteRepository.findApproved(transaction, quote.seriesId, quote.id)) {
@@ -186,7 +231,7 @@ export const quoteService = {
         const changed = await quoteRepository.attachApprovedOrder(transaction, quote.id, order.id, parsed.idempotencyKey, occurredAt);
         if (changed.count !== 1) throw new QuoteServiceError("O orçamento mudou. Atualize a página.");
       } else {
-        await mutateLegacyOrder(transaction, quote, responsibleUserId, target, parsed.idempotencyKey, occurredAt);
+        await mutateLinkedOrder(transaction, quote, responsibleUserId, target, parsed.idempotencyKey, occurredAt);
         const changed = await quoteRepository.updateStatus(transaction, quote.id, expected, {
           status: target,
           ...(target === "SENT" ? { sentAt: occurredAt, sentIdempotencyKey: parsed.idempotencyKey } : {}),
