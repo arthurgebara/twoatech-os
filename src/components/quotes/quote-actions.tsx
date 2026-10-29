@@ -29,7 +29,10 @@ export function QuoteActions({ quoteId, status, isEstimate = false }: { quoteId:
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        {status === "DRAFT" ? <Button disabled={pending} onClick={() => run(sendQuoteAction)}><Send aria-hidden="true" /> Enviar orçamento</Button> : (
+        {status === "DRAFT" ? <>
+          <Button disabled={pending} onClick={() => run(sendQuoteAction)}><Send aria-hidden="true" /> Enviar orçamento</Button>
+          {!isEstimate ? <Button variant="outline" disabled={pending} onClick={() => run(approveQuoteAction)}><Check aria-hidden="true" /> Aprovar sem enviar</Button> : null}
+        </> : (
           <>
             {!isEstimate ? <Button disabled={pending} onClick={() => run(approveQuoteAction)}><Check aria-hidden="true" /> Aprovar</Button> : null}
             <Button variant="destructive" disabled={pending} onClick={() => run(rejectQuoteAction)}><X aria-hidden="true" /> Rejeitar</Button>

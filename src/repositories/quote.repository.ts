@@ -174,9 +174,9 @@ export const quoteRepository = {
       select: { id: true, number: true, status: true },
     });
   },
-  attachApprovedOrder(transaction: QuoteTransaction, quoteId: string, orderId: string, idempotencyKey: string, occurredAt: Date) {
+  attachApprovedOrder(transaction: QuoteTransaction, quoteId: string, orderId: string, idempotencyKey: string, occurredAt: Date, expectedStatus: "DRAFT" | "SENT") {
     return transaction.quote.updateMany({
-      where: { id: quoteId, status: "SENT", serviceOrderId: null },
+      where: { id: quoteId, status: expectedStatus, serviceOrderId: null },
       data: { status: "APPROVED", serviceOrderId: orderId, approvedAt: occurredAt, decisionIdempotencyKey: idempotencyKey },
     });
   },

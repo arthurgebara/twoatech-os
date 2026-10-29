@@ -107,6 +107,7 @@ async function main() {
 
     const estimate = await quoteService.create({ ...quoteInput, idempotencyKey: randomUUID() }, userId);
     assert.equal(estimate.kind, "ESTIMATE");
+    await assert.rejects(quoteService.approve({ quoteId: estimate.id, idempotencyKey: randomUUID() }, userId), /estimativa/);
     await quoteService.send({ quoteId: estimate.id, idempotencyKey: randomUUID() }, userId);
     await assert.rejects(quoteService.approve({ quoteId: estimate.id, idempotencyKey: randomUUID() }, userId), /estimativa/);
     const dto = await pdfDocumentService.getQuote(estimate.id);
@@ -117,6 +118,24 @@ async function main() {
     assert.equal(oldApproval.serviceOrder?.status, "OPEN");
     assert.equal(oldApproval.serviceOrder?.isIntake, false);
     console.log("PASS: remote estimates cannot authorize service; pre-migration sent quote still approves");
+    const directOrder = await serviceOrderService.create({ ...base, idempotencyKey: randomUUID() }, userId);
+    await entryChecklistService.save({ ...entry, ...command(directOrder.id) }, userId);
+    await diagnosticService.save({ ...command(directOrder.id), description: "SSD com defeito", technicalConclusion: "Troca do SSD", recommendations: "" }, userId);
+    const directQuote = await quoteService.create({ ...quoteInput, idempotencyKey: randomUUID(), serviceOrderId: directOrder.id }, userId);
+    const directApproval = { quoteId: directQuote.id, idempotencyKey: randomUUID() };
+    const directlyApproved = await quoteService.approve(directApproval, userId);
+    assert.equal(directlyApproved.status, "APPROVED");
+    assert.equal(directlyApproved.sentAt, null);
+    assert.equal(directlyApproved.sentIdempotencyKey, null);
+    assert.equal(directlyApproved.serviceOrder?.status, "APPROVED");
+    assert.equal(directlyApproved.serviceOrder?.isIntake, false);
+    await quoteService.approve(directApproval, userId);
+    const directTimeline = (await serviceOrderService.getById(directOrder.id))!.timeline;
+    assert.equal(directTimeline.filter((event) => event.type === "ORCAMENTO_ENVIADO").length, 0);
+    assert.equal(directTimeline.filter((event) => event.type === "ATENDIMENTO_CONVERTIDO").length, 1);
+    assert.ok(directTimeline.find((event) => event.type === "ORCAMENTO_APROVADO")?.description?.includes("sem envio"));
+    await serviceExecutionService.execute(command(directOrder.id), userId, "START");
+    console.log("PASS: draft approves directly without sent status, converts only once and authorizes execution");
     await assert.rejects(sql.query('UPDATE service_order_timeline_events SET title=$1 WHERE id=$2', ["Alterado", oldEventId]), /immut|imut|append|alter|permit|update/i);
     console.log("PASS: append-only timeline protection survives migration");
   } finally {

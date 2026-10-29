@@ -6,7 +6,6 @@ import { useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 import { finalizeChecklistAttachmentUploadAction, requestChecklistAttachmentUploadAction } from "@/actions/checklist-attachment.actions";
-import { Button } from "@/components/ui/button";
 import { createUploadProgressFetch } from "@/lib/supabase/upload-progress";
 import { cn } from "@/lib/utils";
 import { formatBrazilianDateTime } from "@/lib/dates";
@@ -117,7 +116,7 @@ export function ChecklistAttachments({
   }
 
   return (
-    <section className="space-y-3 border-t pt-5" aria-labelledby={`attachments-${checklistType}`}>
+    <section className="min-w-0 space-y-3 border-t pt-5" aria-labelledby={`attachments-${checklistType}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 id={`attachments-${checklistType}`} className="flex items-center gap-2 text-sm font-semibold"><Paperclip className="size-4" aria-hidden="true" />Fotos e documentos</h3>
@@ -148,16 +147,16 @@ export function ChecklistAttachments({
             setDragging(false);
             void uploadFiles(event.dataTransfer.files);
           }}
-          className={cn("rounded-xl border-2 border-dashed transition-colors", dragging ? "border-primary bg-primary/10" : "border-border bg-muted/15", !uploading && "hover:border-primary/60 hover:bg-primary/5", "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50")}
+          className={cn("w-full min-w-0 rounded-xl border-2 border-dashed transition-colors", dragging ? "border-primary bg-primary/10" : "border-border bg-muted/15", !uploading && "hover:border-primary/60 hover:bg-primary/5", "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50")}
         >
           <input ref={inputRef} type="file" multiple accept={checklistAttachmentAccept} className="sr-only" disabled={uploading} aria-label="Selecionar fotos e documentos" onChange={(event) => void uploadFiles(event.target.files)} />
-          <Button type="button" variant="ghost" disabled={uploading} className="h-auto w-full flex-col gap-2 whitespace-normal rounded-xl px-4 py-7 text-center hover:bg-transparent" onClick={() => inputRef.current?.click()}>
-            <span className={cn("flex size-11 items-center justify-center rounded-full", dragging ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary")}>
+          <button type="button" disabled={uploading} className="flex min-h-44 w-full min-w-0 flex-col items-center justify-center gap-3 rounded-xl p-5 text-center whitespace-normal outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60 sm:p-6" onClick={() => inputRef.current?.click()}>
+            <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-full", dragging ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary")}>
               {uploading ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> : <UploadCloud className="size-5" aria-hidden="true" />}
             </span>
-            <span className="text-sm font-medium">{uploading ? "Enviando arquivos..." : dragging ? "Solte os arquivos para começar o envio" : "Arraste fotos e documentos para cá"}</span>
-            <span className="text-xs font-normal text-muted-foreground">{uploading ? "Acompanhe o progresso de cada arquivo abaixo." : "ou clique para selecionar · envio automático"}</span>
-          </Button>
+            <span className="block w-full min-w-0 text-sm leading-6 font-medium break-words">{uploading ? "Enviando arquivos..." : dragging ? "Solte os arquivos para começar o envio" : "Arraste fotos e documentos para cá"}</span>
+            <span className="block w-full min-w-0 text-xs leading-5 font-normal break-words text-muted-foreground">{uploading ? "Acompanhe o progresso de cada arquivo abaixo." : "ou clique para selecionar · envio automático"}</span>
+          </button>
         </div>
       ) : null}
 

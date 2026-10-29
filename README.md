@@ -65,9 +65,10 @@ Equipamento recebido → atendimento → checklist de entrada e fotos → diagn�
 
 - **Novo atendimento** abre a ficha antes da aprovação. Cliente e equipamento podem ser cadastrados no próprio formulário.
 - Checklist, anexos, diagnóstico e histórico permanecem no mesmo registro na conversão em OS; o número é preservado.
+- O orçamento definitivo pode ser aprovado diretamente pelo botão **Aprovar sem enviar**, ao lado do envio. A decisão é registrada sem marcar a proposta como enviada ao cliente.
 - O orçamento definitivo exige entrada concluída e diagnóstico. Apenas uma proposta em rascunho, enviada ou aprovada pode existir por atendimento.
 - Para equipamento ainda não recebido, use **Novo pré-orçamento**. É uma estimativa sujeita ao diagnóstico presencial e não autoriza execução. Há um atalho para abrir o atendimento a partir dessa estimativa.
-- Cada versão do orçamento pode incluir até seis fotos JPEG, PNG ou WebP selecionadas da entrada/diagnóstico. PDF e HEIC/HEIF continuam como anexos internos; para incluí-los como evidência no PDF, envie uma versão JPEG/PNG/WebP.
+- Cada versão do orçamento pode incluir até seis fotos JPEG, PNG ou WebP selecionadas da entrada/diagnóstico, organizadas em duas colunas no PDF. PDF e HEIC/HEIF continuam como anexos internos; para incluí-los como evidência no PDF, envie uma versão JPEG/PNG/WebP.
 - Fotos de diagnóstico podem ser adicionadas após concluir a checklist de entrada, até o envio do orçamento. Os itens da checklist concluída continuam imutáveis.
 - Orçamentos anteriores à migração mantêm o fluxo original, inclusive propostas já enviadas que ainda aguardam decisão. OS e eventos antigos não são reclassificados.
 

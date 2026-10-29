@@ -160,14 +160,21 @@ export function generateQuotePdf(dto: QuotePdfDto) {
       section(doc, "Evidências do diagnóstico");
       doc.fillColor(MUTED).font("Helvetica").fontSize(9).text("Fotos selecionadas pela assistência para fundamentar este orçamento.");
       doc.moveDown();
-      for (const [index, photo] of dto.evidence.entries()) {
-        if (doc.y + 240 > 770) doc.addPage();
+      const gap = 16;
+      const columnWidth = (499 - gap) / 2;
+      const imageHeight = 140;
+      const rowHeight = 180;
+      for (let index = 0; index < dto.evidence.length; index += 2) {
+        if (doc.y + rowHeight > 770) doc.addPage();
         const top = doc.y;
-        doc.image(photo.image, 48, top, { fit: [499, 205], align: "center", valign: "center" });
-        doc.y = top + 211;
+        for (const [column, photo] of dto.evidence.slice(index, index + 2).entries()) {
+          const left = 48 + column * (columnWidth + gap);
+          doc.save().rect(left, top, columnWidth, imageHeight).strokeColor(LINE).lineWidth(0.5).stroke().restore();
+          doc.image(photo.image, left + 6, top + 6, { fit: [columnWidth - 12, imageHeight - 12], align: "center", valign: "center" });
+          doc.fillColor(MUTED).font("Helvetica").fontSize(8).text(`Foto ${index + column + 1}: ${photo.name}`, left, top + imageHeight + 6, { width: columnWidth, height: 25, ellipsis: true });
+        }
         doc.x = 48;
-        doc.fillColor(MUTED).font("Helvetica").fontSize(8).text(`Foto ${index + 1}: ${photo.name}`, { width: 499, height: 22, ellipsis: true });
-        doc.y = top + 240;
+        doc.y = top + rowHeight;
       }
     }
   });

@@ -70,7 +70,7 @@ async function mutateLinkedOrder(
   if (!quote.serviceOrder) return;
   const config = {
     SENT: { previous: ["DIAGNOSING", "QUOTE_REJECTED"], next: "AWAITING_APPROVAL" as const, event: "ORCAMENTO_ENVIADO" as const, title: "Orçamento enviado" },
-    APPROVED: { previous: ["AWAITING_APPROVAL"], next: "APPROVED" as const, event: "ORCAMENTO_APROVADO" as const, title: "Orçamento aprovado" },
+    APPROVED: { previous: quote.status === "DRAFT" ? ["DIAGNOSING", "QUOTE_REJECTED"] : ["AWAITING_APPROVAL"], next: "APPROVED" as const, event: "ORCAMENTO_APROVADO" as const, title: "Orçamento aprovado" },
     REJECTED: { previous: ["AWAITING_APPROVAL"], next: "QUOTE_REJECTED" as const, event: "ORCAMENTO_REJEITADO" as const, title: "Orçamento rejeitado" },
   }[target];
   if (!config.previous.includes(quote.serviceOrder.status)) {
@@ -90,11 +90,11 @@ async function mutateLinkedOrder(
     serviceOrderId: quote.serviceOrder.id,
     type: config.event,
     title: config.title,
-    description: `Orçamento #${quote.number}, versão ${quote.version}.`,
+    description: `Orçamento #${quote.number}, versão ${quote.version}.${target === "APPROVED" && quote.status === "DRAFT" ? " Aprovado sem envio prévio ao cliente." : ""}`,
     responsibleUserId,
     occurredAt,
     createdAt: occurredAt,
-    metadata: { quoteId: quote.id, quoteNumber: quote.number, version: quote.version, previousStatus: quote.serviceOrder.status, newStatus: config.next },
+    metadata: { quoteId: quote.id, quoteNumber: quote.number, version: quote.version, previousStatus: quote.serviceOrder.status, newStatus: config.next, ...(target === "APPROVED" ? { approvedWithoutSending: quote.status === "DRAFT" } : {}) },
     idempotencyKey: `quote:${target.toLowerCase()}:${idempotencyKey}`,
   });
   if (event.count !== 1) throw new QuoteServiceError("Esta alteração já foi registrada.");
@@ -219,7 +219,7 @@ export const quoteService = {
         const order = await quoteRepository.findOrder(transaction, quote.serviceOrder.id);
         if (!order?.diagnostic || order.checklists[0]?.status !== "COMPLETED") throw new QuoteServiceError("A entrada e o diagnóstico são obrigatórios para este orçamento.");
       }
-      const expected = target === "SENT" ? "DRAFT" : "SENT";
+      const expected = target === "SENT" || (target === "APPROVED" && quote.status === "DRAFT") ? "DRAFT" : "SENT";
       if (quote.status !== expected) throw new QuoteServiceError("Este orçamento não permite essa alteração agora.");
       if (target === "APPROVED" && await quoteRepository.findApproved(transaction, quote.seriesId, quote.id)) {
         throw new QuoteServiceError("Já existe um orçamento aprovado para este atendimento.");
@@ -228,7 +228,7 @@ export const quoteService = {
       const occurredAt = new Date();
       if (target === "APPROVED" && !quote.serviceOrder) {
         const order = await quoteRepository.createOrderForApprovedQuote(transaction, quote, parsed.idempotencyKey, responsibleUserId, occurredAt, parsed.idempotencyKey);
-        const changed = await quoteRepository.attachApprovedOrder(transaction, quote.id, order.id, parsed.idempotencyKey, occurredAt);
+        const changed = await quoteRepository.attachApprovedOrder(transaction, quote.id, order.id, parsed.idempotencyKey, occurredAt, expected);
         if (changed.count !== 1) throw new QuoteServiceError("O orçamento mudou. Atualize a página.");
       } else {
         await mutateLinkedOrder(transaction, quote, responsibleUserId, target, parsed.idempotencyKey, occurredAt);
